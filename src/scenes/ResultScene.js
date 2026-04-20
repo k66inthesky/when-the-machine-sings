@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { getMomLine } from '../data/dialogue.js';
+import { TOTAL_DAYS } from '../data/levels.js';
 
 export default class ResultScene extends Phaser.Scene {
   constructor() {
@@ -9,8 +11,10 @@ export default class ResultScene extends Phaser.Scene {
   init(data) {
     this.day = data.day || 1;
     this.slackPoints = data.slackPoints || 0;
-    this.hits = data.hits || 0;
-    this.misses = data.misses || 0;
+    this.bagsHit = data.bagsHit || 0;
+    this.bagCount = data.bagCount || 1;
+    this.caught = !!data.caught;
+    this.forcedExit = !!data.forcedExit;
   }
 
   create() {
@@ -19,41 +23,48 @@ export default class ResultScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
 
-    const success = this.hits > 0;
-    const momLine = success
-      ? 'Mom: "You made it. Good."'
-      : 'Mom: "You missed it. Again."';
-    const score = success ? this.slackPoints * 10 + 100 : this.slackPoints * 10 - 50;
-
-    this.add.text(w / 2, h / 2 - 80, `Day ${this.day} — Result`, {
-      fontFamily: 'serif',
-      fontSize: '22px',
-      color: '#e8b96a',
+    this.add.text(w / 2, 60, `Day ${this.day} — Result`, {
+      fontFamily: 'serif', fontSize: '22px', color: '#e8b96a',
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, h / 2 - 30, momLine, {
-      fontFamily: 'serif',
-      fontSize: '18px',
-      color: '#e8dccb',
-      fontStyle: 'italic',
+    const outcome = this.caught ? 'caught' : 'missed';
+    const mom = getMomLine(this.day, outcome);
+    this.add.text(w / 2, 130, mom, {
+      fontFamily: 'serif', fontSize: '18px', color: '#e8dccb', fontStyle: 'italic',
+      align: 'center', wordWrap: { width: w - 120 },
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, h / 2 + 10, `Score: ${score}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '16px',
-      color: '#6acfff',
-    }).setOrigin(0.5);
+    // Score breakdown
+    const slackScore = this.slackPoints * 5;
+    const bagScore = this.bagsHit * 100;
+    const fullClearBonus = this.bagsHit >= this.bagCount ? 100 : 0;
+    const missedPenalty = this.caught ? 0 : -75;
+    const forcedPenalty = this.forcedExit ? -50 : 0;
+    const total = slackScore + bagScore + fullClearBonus + missedPenalty + forcedPenalty;
 
-    const prompt = this.add.text(w / 2, h / 2 + 80, '[ Press SPACE to continue ]', {
-      fontFamily: 'sans-serif',
-      fontSize: '16px',
-      color: '#999',
-    }).setOrigin(0.5);
+    const lines = [
+      `Slack points : ${this.slackPoints} × 5 = ${slackScore}`,
+      `Bags thrown  : ${this.bagsHit} / ${this.bagCount} × 100 = ${bagScore}`,
+      fullClearBonus ? `Full clear bonus : +${fullClearBonus}` : null,
+      missedPenalty ? `Missed the truck : ${missedPenalty}` : null,
+      forcedPenalty ? `Ran out too late : ${forcedPenalty}` : null,
+      ``,
+      `Total : ${total}`,
+    ].filter(Boolean);
 
+    this.add.text(w / 2, h / 2 + 30, lines.join('\n'), {
+      fontFamily: 'monospace', fontSize: '14px', color: '#aaa',
+      align: 'center', lineSpacing: 4,
+    }).setOrigin(0.5, 0);
+
+    const nextLabel = this.day >= TOTAL_DAYS ? '[ SPACE — continue to the depot ]' : '[ SPACE — next day ]';
+    const prompt = this.add.text(w / 2, h - 40, nextLabel, {
+      fontFamily: 'sans-serif', fontSize: '14px', color: '#6acfff',
+    }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-SPACE', () => {
-      if (this.day >= 5) {
+      if (this.day >= TOTAL_DAYS) {
         this.scene.start(SCENES.ENDING);
       } else {
         this.scene.start(SCENES.APARTMENT, { day: this.day + 1 });

@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { getLevel } from '../data/levels.js';
+import AudioDistance from '../systems/AudioDistance.js';
+import Player from '../objects/Player.js';
+import TrashTruck from '../objects/TrashTruck.js';
+
+// Street chase: the truck drives slowly from right to left. Player spawns on the
+// left. Player closes the gap with Right arrow, then presses SPACE to throw the bag.
+// Each successful bag throw scores; bags missed count against you. Truck escapes
+// when it reaches the left edge of screen or after throwWindow runs out.
 
 export default class StreetScene extends Phaser.Scene {
   constructor() {
@@ -7,58 +16,231 @@ export default class StreetScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.day = data.day || 1;
+    this.level = getLevel(data.day || 1);
     this.slackPoints = data.slackPoints || 0;
-    this.truckProximity = data.truckProximity || 0;
-    this.hits = 0;
-    this.misses = 0;
+    this.proximityAtExit = data.proximityAtExit ?? 0.5;
+    this.forcedExit = !!data.forcedExit;
+    this.bagsThrown = 0;
+    this.bagsHit = 0;
+    this.finished = false;
+    this.throwLocked = false;
   }
 
   create() {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
-    this.add.rectangle(0, 0, w, h, 0x2a1a2a).setOrigin(0);
-    this.add.text(w / 2, 40, 'The alley — chase the truck', {
-      fontFamily: 'serif',
-      fontSize: '20px',
-      color: '#e8b96a',
+    // Dusk alley background
+    const skyTop = this.level.weather === 'rain' ? 0x3a3a4a : 0xd97a5a;
+    const skyBottom = this.level.weather === 'rain' ? 0x2a2a35 : 0x6a3a5a;
+    this.add.rectangle(0, 0, w, h * 0.55, skyTop).setOrigin(0);
+    this.add.rectangle(0, h * 0.55, w, h * 0.10, skyBottom).setOrigin(0);
+
+    // Building silhouettes (multi-layer for depth)
+    for (let i = 0; i < 8; i++) {
+      const bx = i * (w / 7);
+      const bh = 120 + (i % 3) * 40;
+      this.add.rectangle(bx, h * 0.65 - bh, w / 7 + 4, bh, 0x3a1f30).setOrigin(0, 1);
+    }
+
+    // Power lines
+    for (let i = 0; i < 3; i++) {
+      this.add.line(0, 0, 0, 70 + i * 12, w, 60 + i * 12, 0x1a1a20, 1).setOrigin(0, 0).setLineWidth(1);
+    }
+
+    // Street
+    this.add.rectangle(0, h * 0.65, w, h * 0.35, 0x2a1a20).setOrigin(0);
+    this.add.rectangle(0, h * 0.65, w, 4, 0x5a4a30).setOrigin(0);
+
+    // Scooter silhouettes parked on sidewalk
+    for (let i = 0; i < 5; i++) {
+      this.add.rectangle(80 + i * 120, h * 0.68, 32, 14, 0x3a2a30);
+    }
+
+    // Rain overlay
+    if (this.level.weather === 'rain') {
+      this.rain = this.add.particles(0, 0, null, null);
+      this.rainTimer = this.time.addEvent({
+        delay: 30, loop: true,
+        callback: () => {
+          const g = this.add.line(0, 0,
+            Phaser.Math.Between(0, w), 0,
+            Phaser.Math.Between(0, w) - 10, h,
+            0x9ac0c0, 0.3,
+          ).setLineWidth(1);
+          this.tweens.add({ targets: g, alpha: 0, duration: 400, onComplete: () => g.destroy() });
+        },
+      });
+    }
+
+    // Truck — starts off-screen right, drives to left
+    this.truck = new TrashTruck(this, w + 120, h * 0.80);
+    this.truck.rumble(this);
+
+    // Player on left
+    this.player = new Player(this, 100, h * 0.82);
+    this.player.setFacing('right');
+
+    // HUD
+    this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} — chase`, {
+      fontFamily: 'serif', fontSize: '16px', color: '#e8b96a',
+    }).setOrigin(0.5, 0);
+
+    this.bagsLabel = this.add.text(20, 20, `Bags: 0 / ${this.level.bagCount}`, {
+      fontFamily: 'sans-serif', fontSize: '14px', color: '#e8dccb',
+    });
+
+    this.hint = this.add.text(w / 2, h - 22, '→ move closer   SPACE: throw bag (when truck is in front of you)', {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#999',
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, 80, '[ placeholder: street with truck ]', {
-      fontFamily: 'sans-serif',
-      fontSize: '12px',
-      color: '#666',
-    }).setOrigin(0.5);
+    // Timing indicator — a shrinking bar under the player when truck is in range.
+    this.rangeBarBg = this.add.rectangle(0, 0, 80, 6, 0x1a1a2a).setVisible(false);
+    this.rangeBar = this.add.rectangle(0, 0, 80, 5, 0x6acfff).setOrigin(0, 0.5).setVisible(false);
 
-    this.add.text(w / 2, h - 60, 'SPACE: throw the trash bag', {
-      fontFamily: 'sans-serif',
-      fontSize: '14px',
-      color: '#e8dccb',
-    }).setOrigin(0.5);
+    // Audio continues from apartment
+    this.audio = new AudioDistance(this);
+    this.audio.setProximity(0.9);
+    this.audio.start();
 
-    this.resultText = this.add.text(w / 2, h / 2, '', {
-      fontFamily: 'serif',
-      fontSize: '28px',
-      color: '#6acfff',
-    }).setOrigin(0.5);
+    // Truck drives slowly leftward, escape time scales with level
+    const escapeDuration = 7000 / this.level.streetSpeed;
+    this.truckTween = this.tweens.add({
+      targets: this.truck,
+      x: -200,
+      duration: escapeDuration,
+      ease: 'Linear',
+      onComplete: () => this.endChase(),
+    });
 
-    this.input.keyboard.once('keydown-SPACE', () => {
-      if (this.truckProximity > 0.8) {
-        this.hits = 1;
-        this.resultText.setText('Bag hit. You made it.');
-      } else {
-        this.misses = 1;
-        this.resultText.setText('Too late. The truck rolls on.');
-      }
-      this.time.delayedCall(1500, () => {
-        this.scene.start(SCENES.RESULT, {
-          day: this.day,
-          slackPoints: this.slackPoints,
-          hits: this.hits,
-          misses: this.misses,
+    // Input
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.input.keyboard.on('keydown-SPACE', () => this.throwBag());
+    this.input.keyboard.on('keydown-LEFT', () => {
+      this.player.x = Math.max(60, this.player.x - 18);
+    });
+    this.input.keyboard.on('keydown-RIGHT', () => {
+      this.player.x = Math.min(w - 60, this.player.x + 24);
+    });
+
+    // Periodic "distance window" update
+    this.time.addEvent({
+      delay: 60, loop: true,
+      callback: () => this.updateRangeIndicator(),
+    });
+
+    this.input.keyboard.once('keydown', () => this.audio.ctx.resume && this.audio.ctx.resume());
+  }
+
+  updateRangeIndicator() {
+    if (this.finished) return;
+    const dx = Math.abs(this.truck.x - this.player.x);
+    const inRange = dx < 100;
+    this.rangeBarBg.setVisible(inRange).setPosition(this.player.x - 40, this.player.y - 56);
+    this.rangeBar.setVisible(inRange).setPosition(this.player.x - 40, this.player.y - 56);
+    if (inRange) {
+      const quality = 1 - (dx / 100);
+      this.rangeBar.width = 80 * quality;
+      this.rangeBar.fillColor = dx < 50 ? 0x6affaa : 0x6acfff;
+    }
+  }
+
+  throwBag() {
+    if (this.finished || this.throwLocked) return;
+    if (this.bagsThrown >= this.level.bagCount) return;
+    this.throwLocked = true;
+    this.bagsThrown += 1;
+
+    const dx = Math.abs(this.truck.x - this.player.x);
+    const hit = dx < 90; // generous hitbox; dx<50 is "perfect" which could grant bonus later
+
+    const bag = this.add.rectangle(this.player.x + 10, this.player.y - 10, 12, 16, 0xe8c850).setStrokeStyle(1, 0x805520);
+
+    const targetX = hit ? this.truck.x - 30 : this.truck.x + 100;
+    const targetY = hit ? this.truck.y - 30 : this.truck.y + 40;
+
+    // Parabolic toss
+    this.tweens.add({
+      targets: bag,
+      x: targetX,
+      y: targetY,
+      duration: 600,
+      ease: 'Quad.easeIn',
+    });
+    this.tweens.add({
+      targets: bag,
+      angle: hit ? 360 : 720,
+      duration: 600,
+    });
+
+    // Mid-arc lift
+    this.tweens.add({
+      targets: bag,
+      y: bag.y - 80,
+      duration: 280,
+      ease: 'Quad.easeOut',
+      yoyo: false,
+      onComplete: () => {
+        this.tweens.add({
+          targets: bag,
+          y: targetY,
+          duration: 320,
+          ease: 'Quad.easeIn',
+          onComplete: () => {
+            if (hit) {
+              this.bagsHit += 1;
+              this.flashHit();
+              bag.destroy();
+            } else {
+              this.flashMiss();
+              this.tweens.add({ targets: bag, alpha: 0, duration: 400, onComplete: () => bag.destroy() });
+            }
+            this.bagsLabel.setText(`Bags: ${this.bagsHit} / ${this.level.bagCount}`);
+            this.time.delayedCall(250, () => { this.throwLocked = false; });
+
+            if (this.bagsHit >= this.level.bagCount) {
+              this.time.delayedCall(700, () => this.endChase(true));
+            }
+          },
         });
+      },
+    });
+  }
+
+  flashHit() {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, '+HIT', {
+      fontFamily: 'sans-serif', fontSize: '18px', color: '#6affaa', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });
+  }
+
+  flashMiss() {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, 'miss', {
+      fontFamily: 'sans-serif', fontSize: '16px', color: '#ff6b8a',
+    }).setOrigin(0.5);
+    this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });
+  }
+
+  endChase(success) {
+    if (this.finished) return;
+    this.finished = true;
+    this.truckTween.stop();
+    this.audio.stop();
+    const caught = success || this.bagsHit >= this.level.bagCount;
+    this.cameras.main.fadeOut(400, 10, 10, 15);
+    this.time.delayedCall(430, () => {
+      this.scene.start(SCENES.RESULT, {
+        day: this.level.day,
+        slackPoints: this.slackPoints,
+        bagsHit: this.bagsHit,
+        bagCount: this.level.bagCount,
+        caught,
+        forcedExit: this.forcedExit,
       });
     });
+  }
+
+  shutdown() {
+    if (this.audio) this.audio.destroy();
   }
 }

@@ -7,6 +7,10 @@ dist/
 *.log
 .vscode/
 .idea/
+.claude/
+
+# Windows/WSL NTFS stream metadata
+*:Zone.Identifier
 
 # AI-generated assets work files (keep only final)
 assets/prompts/_scratch/

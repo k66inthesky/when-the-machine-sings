@@ -16,8 +16,6 @@ export default class ApartmentScene extends Phaser.Scene {
     this.totalScore = data.totalScore || 0;
     this.slackPoints = 0;
     this.elapsed = 0;
-    this.bagsReady = 0;
-    this.notificationsSent = 0;
     this.left = false;
   }
 
@@ -113,6 +111,13 @@ export default class ApartmentScene extends Phaser.Scene {
       this.noteGlyphs.push(g);
     }
 
+    // Urgency border — grows red+strong as the truck gets here. Important
+    // accessibility cue: players with muted audio still see the deadline.
+    this.urgencyBorder = this.add.rectangle(w / 2, h / 2, w - 4, h - 4)
+      .setStrokeStyle(4, 0xff6b8a, 0)
+      .setFillStyle()
+      .setDepth(500);
+
     // Notification popup (hidden by default)
     this.notifGroup = this.add.container(0, 0).setVisible(false);
     const notifBg = this.add.rectangle(w / 2, h - 90, 360, 44, 0x0a0a0f, 0.9).setStrokeStyle(2, 0x6acfff);
@@ -185,6 +190,13 @@ export default class ApartmentScene extends Phaser.Scene {
         const pulse = 0.6 + 0.4 * Math.sin(this.elapsed * 2 + i * 0.8);
         g.setAlpha(noteAlpha * pulse);
       });
+    }
+
+    // Urgency border strokes in around proximity > 0.7 and pulses thereafter.
+    if (this.urgencyBorder) {
+      const urgent = Math.max(0, (proximity - 0.7) / 0.3);
+      const pulse = 0.6 + 0.4 * Math.sin(this.elapsed * 4);
+      this.urgencyBorder.setStrokeStyle(4, 0xff6b8a, urgent * pulse);
     }
 
     // Visual proximity preview through the window.

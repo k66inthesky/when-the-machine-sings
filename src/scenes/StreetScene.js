@@ -110,8 +110,13 @@ export default class StreetScene extends Phaser.Scene {
       const bgm = this.sound.add(bgmKey, { loop: true, volume: 0 });
       this.audio.setRealSound(bgm);
     }
-    this.audio.setProximity(0.9);
+    this.audio.setProximity(0.2);
     this.audio.start();
+    // Smooth 800ms BGM ramp instead of snapping to full volume on scene entry.
+    this.tweens.addCounter({
+      from: 0.2, to: 0.9, duration: 800,
+      onUpdate: (t) => this.audio && this.audio.setProximity(t.getValue()),
+    });
 
     // Field recording plays on top if present — grounds the scene in real place.
     if (this.cache.audio.exists('truck-real')) {

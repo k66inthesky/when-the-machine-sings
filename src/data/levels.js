@@ -15,7 +15,7 @@ export const LEVELS = [
     streetSpeed: 1.0,
     weather: 'clear',
     notifications: 1,
-    momOpener: "Day 1. Mom says: 'Don't miss the truck tonight.'",
+    momOpener: "Day 1. Mom: \"Don't miss the truck tonight.\"\n第一天。媽:「今晚垃圾車不要錯過。」",
   },
   {
     day: 2,
@@ -25,7 +25,7 @@ export const LEVELS = [
     streetSpeed: 1.1,
     weather: 'clear',
     notifications: 2,
-    momOpener: "Day 2. Mom says: 'Two bags. Don't forget the kitchen trash.'",
+    momOpener: "Day 2. Mom: \"Two bags. Don't forget the kitchen trash.\"\n第二天。媽:「兩包喔,廚餘不要忘記。」",
   },
   {
     day: 3,
@@ -35,7 +35,7 @@ export const LEVELS = [
     streetSpeed: 1.15,
     weather: 'rain',
     notifications: 2,
-    momOpener: "Day 3. It's raining. Mom says: 'Take the umbrella. Hurry.'",
+    momOpener: "Day 3. It's raining. Mom: \"Take the umbrella. Hurry.\"\n第三天,下雨。媽:「帶把傘,快點去。」",
   },
   {
     day: 4,
@@ -45,7 +45,7 @@ export const LEVELS = [
     streetSpeed: 1.25,
     weather: 'nightmarket',
     notifications: 3,
-    momOpener: "Day 4. Mom says: 'Night market is loud tonight. Listen carefully.'",
+    momOpener: "Day 4. Mom: \"Night market is loud tonight. Listen carefully.\"\n第四天。媽:「今晚夜市很吵,耳朵放好。」",
   },
   {
     day: 5,
@@ -55,7 +55,7 @@ export const LEVELS = [
     streetSpeed: 1.4,
     weather: 'clear',
     notifications: 3,
-    momOpener: "Day 5. Mom says: 'One last bag, some old clothes. Please.'",
+    momOpener: "Day 5. Mom: \"One last bag, some old clothes. Please.\"\n第五天。媽:「最後一包,一些舊衣服,拜託你。」",
   },
 ];
 

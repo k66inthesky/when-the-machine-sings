@@ -7,6 +7,8 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create() {
+    const el = document.getElementById('loading-fallback');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
     this.scene.start(SCENES.PRELOAD);
   }
 }

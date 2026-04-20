@@ -78,6 +78,16 @@ export default class TitleScene extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '11px', color: '#8a8880', fontStyle: 'italic',
     }).setOrigin(0.5);
 
+    // Persistent best from a prior run — silent if none.
+    try {
+      const best = parseInt(localStorage.getItem('wtms_best') || '0', 10);
+      if (best > 0) {
+        this.add.text(w - 14, 14, `Best: ${best}`, {
+          fontFamily: 'monospace', fontSize: '12px', color: '#e8b96a',
+        }).setOrigin(1, 0);
+      }
+    } catch (_) {}
+
     this.input.keyboard.once('keydown-SPACE', () => {
       this.cameras.main.fadeOut(450, 5, 5, 10);
       this.time.delayedCall(470, () => this.scene.start(SCENES.INTRO));

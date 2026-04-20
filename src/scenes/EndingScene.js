@@ -94,7 +94,11 @@ export default class EndingScene extends Phaser.Scene {
 
     const isLast = this.actIndex === ACTS.length - 1;
     if (isLast) {
-      this.add.text(w / 2, h - 72, `Your week: ${this.totalScore} points`, {
+      const best = this.persistHighScore(this.totalScore);
+      const line = best > this.totalScore
+        ? `Your week: ${this.totalScore}   •   Best: ${best}`
+        : `Your week: ${this.totalScore}   •   New best!`;
+      this.add.text(w / 2, h - 72, line, {
         fontFamily: 'monospace', fontSize: '13px', color: '#e8b96a',
       }).setOrigin(0.5);
     }
@@ -115,5 +119,18 @@ export default class EndingScene extends Phaser.Scene {
         this.showAct();
       }
     });
+  }
+
+  persistHighScore(score) {
+    try {
+      const prev = parseInt(localStorage.getItem('wtms_best') || '0', 10) || 0;
+      if (score > prev) {
+        localStorage.setItem('wtms_best', String(score));
+        return score;
+      }
+      return prev;
+    } catch (_) {
+      return score;
+    }
   }
 }

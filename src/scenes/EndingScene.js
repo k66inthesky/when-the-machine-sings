@@ -37,6 +37,19 @@ const ACTS = [
       'Thank them.',
     ],
   },
+  {
+    title: 'Credits',
+    text: [
+      'A game by k66 — Gamedev.js Jam 2026',
+      'Theme: Machines',
+      '',
+      'Music inspired by "Für Elise" — Ludwig van Beethoven',
+      'Narrative drawn from Taiwan case coverage, 2024–2025',
+      '',
+      'Made with Phaser 3, Vite, WebAudio, and a lot of coffee.',
+      '獻給所有在傍晚跑過巷子的人。',
+    ],
+  },
 ];
 
 export default class EndingScene extends Phaser.Scene {

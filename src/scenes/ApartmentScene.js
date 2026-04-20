@@ -27,6 +27,21 @@ export default class ApartmentScene extends Phaser.Scene {
 
     this.cameras.main.fadeIn(350, 10, 10, 15);
 
+    // Day title card — brief flash before controls come alive.
+    const dayCard = this.add.text(w / 2, h / 2, `Day ${this.level.day}`, {
+      fontFamily: 'serif', fontSize: '56px', color: '#e8b96a', fontStyle: 'bold',
+      stroke: '#2a1a10', strokeThickness: 4,
+    }).setOrigin(0.5).setAlpha(0).setDepth(1000);
+    this.tweens.add({
+      targets: dayCard, alpha: 1, duration: 360,
+      onComplete: () => {
+        this.tweens.add({
+          targets: dayCard, alpha: 0, duration: 500, delay: 700,
+          onComplete: () => dayCard.destroy(),
+        });
+      },
+    });
+
     // AI-painted dusk living room backdrop — scaled to fill canvas
     if (this.textures.exists('bg-apartment')) {
       this.add.image(w / 2, h / 2, 'bg-apartment').setDisplaySize(w, h);

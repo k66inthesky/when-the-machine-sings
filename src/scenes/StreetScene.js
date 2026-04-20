@@ -113,6 +113,12 @@ export default class StreetScene extends Phaser.Scene {
     this.audio.setProximity(0.9);
     this.audio.start();
 
+    // Field recording plays on top if present — grounds the scene in real place.
+    if (this.cache.audio.exists('truck-real')) {
+      this.truckRecording = this.sound.add('truck-real', { loop: true, volume: 0.35 });
+      this.truckRecording.play();
+    }
+
     // Brief "GO!" beat so the player can orient before the truck moves.
     this.throwLocked = true;
     const goText = this.add.text(w / 2, h / 2 - 20, 'GO!', {
@@ -285,5 +291,8 @@ export default class StreetScene extends Phaser.Scene {
 
   shutdown() {
     if (this.audio) this.audio.destroy();
+    if (this.truckRecording && this.truckRecording.isPlaying) {
+      this.truckRecording.stop();
+    }
   }
 }

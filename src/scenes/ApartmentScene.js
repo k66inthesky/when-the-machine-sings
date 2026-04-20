@@ -134,6 +134,14 @@ export default class ApartmentScene extends Phaser.Scene {
     }
     this.audio.start();
 
+    // Truck recording layer — field recording that fades in on top of BGM as
+    // proximity rises. Optional; silently skipped if the user hasn't dropped
+    // a recording into assets/audio/sfx/.
+    if (this.cache.audio.exists('truck-real')) {
+      this.truckRecording = this.sound.add('truck-real', { loop: true, volume: 0 });
+      this.truckRecording.play();
+    }
+
     // Input
     this.input.keyboard.on('keydown-E', () => this.scrollPhone());
     this.input.keyboard.on('keydown-T', () => this.toggleTv());
@@ -197,6 +205,13 @@ export default class ApartmentScene extends Phaser.Scene {
       const urgent = Math.max(0, (proximity - 0.7) / 0.3);
       const pulse = 0.6 + 0.4 * Math.sin(this.elapsed * 4);
       this.urgencyBorder.setStrokeStyle(4, 0xff6b8a, urgent * pulse);
+    }
+
+    // Field recording layer — silence until proximity > 0.5, then ramps up
+    // quickly. Hard cap at 0.4 so it layers on top of BGM without drowning it.
+    if (this.truckRecording) {
+      const urgencyVol = Math.max(0, (proximity - 0.5) / 0.5) * 0.4;
+      this.truckRecording.setVolume(urgencyVol);
     }
 
     // Visual proximity preview through the window.
@@ -287,5 +302,8 @@ export default class ApartmentScene extends Phaser.Scene {
 
   shutdown() {
     if (this.audio) this.audio.destroy();
+    if (this.truckRecording && this.truckRecording.isPlaying) {
+      this.truckRecording.stop();
+    }
   }
 }

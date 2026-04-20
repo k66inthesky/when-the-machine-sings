@@ -1,0 +1,39 @@
+# Gamedev.js Jam 2026 — Submission Checklist
+
+Deadline: **2026-04-26 17:00 CET** (Taipei: 2026-04-26 23:00 CST)
+
+## Before submitting
+
+- [ ] `npm run build` produces clean `dist/` with all images + audio
+- [ ] Zip the full `dist/` directory (not just contents) — itch.io will auto-index `index.html`
+- [ ] Test the zip by extracting and opening `index.html` locally — make sure assets resolve with relative paths
+- [ ] At least one full 5-day playthrough end-to-end in Chrome + Firefox
+- [ ] Audio unlock works (first click/keypress resumes WebAudio context)
+- [ ] No uncaught errors in console during a full playthrough
+
+## Itch.io page
+
+- [ ] Title: **When the Machine Sings**
+- [ ] Short description (one line): *A narrative arcade game about Taiwan's garbage trucks and the music they sing.*
+- [ ] Kind of project: **HTML**
+- [ ] Release status: **Released**
+- [ ] Cover image uploaded (630×500, see `cover_prompt.md`)
+- [ ] Genre: **Arcade** (primary), tag also as **Narrative**
+- [ ] Tags: `gamedevjs-jam-2026`, `taiwan`, `arcade`, `narrative`, `phaser`, `html5`, `audio`, `dusk`
+- [ ] Description body: paste `description.md`
+- [ ] Screenshots × 5 (see `cover_prompt.md` for suggested shots)
+- [ ] Community: Comments enabled, Disable rating = off
+- [ ] Pricing: No payments (free)
+
+## Jam submission
+
+- [ ] Submit via [gamedevjs-2026 jam page](https://itch.io/jam/gamedevjs-2026)
+- [ ] Fill in: Innovation (audio-as-gameplay), Theme (machines ritual), Gameplay, Graphics, Audio
+- [ ] Check all categories relevant for bonus prizes
+- [ ] Submit at least 12 hours before deadline to leave buffer for fixes
+
+## Post-submit
+
+- [ ] Share on Gamedev.js jam Discord channel #submissions
+- [ ] Post to X / Mastodon with gameplay gif
+- [ ] Keep the repo public with MIT license

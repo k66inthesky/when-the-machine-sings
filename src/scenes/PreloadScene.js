@@ -36,12 +36,53 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('player-walk-4', 'assets/images/char/player_walk_side_04.png');
     this.load.image('player-run', 'assets/images/char/player_run_side.png');
     this.load.image('mom-angry', 'assets/images/char/mom_angry.png');
-    this.load.image('mom-proud', 'assets/images/char/_proud.png');
-    this.load.image('mom-satisfied', 'assets/images/char/_satisfied.png');
+    this.load.image('mom-proud', 'assets/images/char/mom_proud.png');
+    this.load.image('mom-satisfied', 'assets/images/char/mom_satisfied.png');
+
+    this.load.image('truck-far', 'assets/images/char/truck_far.png');
+    this.load.image('truck-mid', 'assets/images/char/truck_mid.png');
+
+    // Audio loads — optional. Failed loads are expected before the user drops
+    // Suno exports + field recordings in; the game falls back to synth + procedural SFX.
+    this.load.audio('bgm-main', [
+      'assets/audio/music/bgm_main.mp3',
+      'assets/audio/music/bgm_main.ogg',
+    ]);
+    this.load.audio('bgm-tension', [
+      'assets/audio/music/bgm_tension.mp3',
+      'assets/audio/music/bgm_tension.ogg',
+    ]);
+    this.load.audio('bgm-ending', [
+      'assets/audio/music/bgm_ending.mp3',
+      'assets/audio/music/bgm_ending.ogg',
+    ]);
+    this.load.audio('truck-real', [
+      'assets/audio/sfx/truck_recording.mp3',
+      'assets/audio/sfx/truck_recording.ogg',
+    ]);
+    for (const key of ['throw', 'hit', 'miss', 'ping', 'tick', 'scroll', 'static', 'step']) {
+      this.load.audio(`sfx-${key}`, [
+        `assets/audio/sfx/${key}.mp3`,
+        `assets/audio/sfx/${key}.ogg`,
+      ]);
+    }
+
+    // Mom voice lines — one per day × two outcomes. Loaded if user has recorded.
+    for (let day = 1; day <= 5; day++) {
+      for (const outcome of ['caught', 'missed']) {
+        this.load.audio(`mom-d${day}-${outcome}`, [
+          `assets/audio/voice/mom_d${day}_${outcome}.mp3`,
+          `assets/audio/voice/mom_d${day}_${outcome}.ogg`,
+        ]);
+      }
+    }
 
     // Image loads can silently fail on bad paths — surface that in the console.
+    // For audio, we expect 404s before recording + music are ready.
     this.load.on('loaderror', (file) => {
-      console.warn('[preload] asset missing:', file.src);
+      if (file.type !== 'audio') {
+        console.warn('[preload] asset missing:', file.src);
+      }
     });
   }
 

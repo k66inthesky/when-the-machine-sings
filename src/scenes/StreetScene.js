@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getLevel } from '../data/levels.js';
 import AudioDistance from '../systems/AudioDistance.js';
+import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
 import TrashTruck from '../objects/TrashTruck.js';
 
@@ -29,6 +30,8 @@ export default class StreetScene extends Phaser.Scene {
   create() {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
+
+    this.cameras.main.fadeIn(400, 10, 10, 15);
 
     // Painted alley backdrop — weather + day choose which variant
     const bgKey = this.pickAlleyBg();
@@ -97,8 +100,15 @@ export default class StreetScene extends Phaser.Scene {
     this.rangeBarBg = this.add.rectangle(0, 0, 80, 6, 0x1a1a2a).setVisible(false);
     this.rangeBar = this.add.rectangle(0, 0, 80, 5, 0x6acfff).setOrigin(0, 0.5).setVisible(false);
 
-    // Audio continues from apartment
+    // Audio continues from apartment — swap to tension BGM if available, else main.
     this.audio = new AudioDistance(this);
+    const bgmKey = this.cache.audio.exists('bgm-tension')
+      ? 'bgm-tension'
+      : (this.cache.audio.exists('bgm-main') ? 'bgm-main' : null);
+    if (bgmKey) {
+      const bgm = this.sound.add(bgmKey, { loop: true, volume: 0 });
+      this.audio.setRealSound(bgm);
+    }
     this.audio.setProximity(0.9);
     this.audio.start();
 
@@ -149,6 +159,7 @@ export default class StreetScene extends Phaser.Scene {
     if (this.bagsThrown >= this.level.bagCount) return;
     this.throwLocked = true;
     this.bagsThrown += 1;
+    Sfx.throw(this);
 
     const dx = Math.abs(this.truck.x - this.player.x);
     const hit = dx < 90; // generous hitbox; dx<50 is "perfect" which could grant bonus later

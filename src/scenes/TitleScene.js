@@ -10,44 +10,69 @@ export default class TitleScene extends Phaser.Scene {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
-    this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
+    this.cameras.main.fadeIn(500, 5, 5, 10);
 
-    this.add.text(w / 2, h / 2 - 80, 'WHEN THE MACHINE SINGS', {
+    // Painted night-market alley as title backdrop — carries the mood.
+    if (this.textures.exists('bg-alley-night-market')) {
+      this.add.image(w / 2, h / 2, 'bg-alley-night-market').setDisplaySize(w, h);
+      // Heavy vignette so text sits forward.
+      this.add.rectangle(0, 0, w, h, 0x050510, 0.55).setOrigin(0);
+    } else {
+      this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
+    }
+
+    // Title card — large serif, warm color pulled from Taipei truck livery.
+    const title = this.add.text(w / 2, h / 2 - 100, 'WHEN THE MACHINE SINGS', {
       fontFamily: 'serif',
-      fontSize: '40px',
+      fontSize: '44px',
       color: '#e8b96a',
       fontStyle: 'bold',
+      stroke: '#2a1a10',
+      strokeThickness: 4,
     }).setOrigin(0.5);
+    // Slow breathing on the title for ambient motion.
+    this.tweens.add({
+      targets: title, scale: 1.015, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
 
-    this.add.text(w / 2, h / 2 - 30, 'In Taiwan, when the machine sings, you run.', {
+    this.add.text(w / 2, h / 2 - 55, '當機器唱起〈給愛麗絲〉,你就該跑了', {
       fontFamily: 'serif',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#e8dccb',
       fontStyle: 'italic',
     }).setOrigin(0.5);
 
-    const prompt = this.add.text(w / 2, h / 2 + 60, '[ Press SPACE to start ]', {
+    this.add.text(w / 2, h / 2 - 30, 'In Taiwan, when the machine sings, you run.', {
+      fontFamily: 'serif',
+      fontSize: '15px',
+      color: '#aaa9a0',
+      fontStyle: 'italic',
+    }).setOrigin(0.5);
+
+    // Tiny lantern pulse — a warm point of light bottom-left for night-market mood.
+    const lantern = this.add.circle(60, h - 90, 10, 0xe8892a, 0.9);
+    this.tweens.add({
+      targets: lantern, alpha: 0.5, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+    this.add.circle(60, h - 90, 22, 0xe8892a, 0.15);
+
+    const prompt = this.add.text(w / 2, h / 2 + 70, '[ Press SPACE to start ]', {
       fontFamily: 'sans-serif',
       fontSize: '18px',
       color: '#6acfff',
     }).setOrigin(0.5);
+    this.tweens.add({ targets: prompt, alpha: 0.3, duration: 800, yoyo: true, repeat: -1 });
 
-    this.tweens.add({
-      targets: prompt,
-      alpha: 0.3,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-    });
-
-    this.add.text(w / 2, h - 30, 'Gamedev.js Jam 2026 — Theme: Machines', {
-      fontFamily: 'sans-serif',
-      fontSize: '12px',
-      color: '#666',
+    this.add.text(w / 2, h - 28, 'Gamedev.js Jam 2026 — Theme: Machines', {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#8a8880',
+    }).setOrigin(0.5);
+    this.add.text(w / 2, h - 14, 'Dedicated to the sanitation workers of Taiwan', {
+      fontFamily: 'serif', fontSize: '11px', color: '#8a8880', fontStyle: 'italic',
     }).setOrigin(0.5);
 
     this.input.keyboard.once('keydown-SPACE', () => {
-      this.scene.start(SCENES.APARTMENT, { day: 1 });
+      this.cameras.main.fadeOut(450, 5, 5, 10);
+      this.time.delayedCall(470, () => this.scene.start(SCENES.APARTMENT, { day: 1 }));
     });
   }
 }

@@ -46,7 +46,15 @@ export default class EndingScene extends Phaser.Scene {
 
   create() {
     this.actIndex = 0;
+    this.cameras.main.fadeIn(700, 5, 5, 10);
+    if (this.cache.audio.exists('bgm-ending')) {
+      this.endingBgm = this.sound.add('bgm-ending', { loop: true, volume: 0.6 });
+      this.endingBgm.play();
+    }
     this.showAct();
+    this.events.once('shutdown', () => {
+      if (this.endingBgm && this.endingBgm.isPlaying) this.endingBgm.stop();
+    });
   }
 
   showAct() {

@@ -3,6 +3,7 @@ import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getLevel } from '../data/levels.js';
 import { randomNag } from '../data/dialogue.js';
 import AudioDistance from '../systems/AudioDistance.js';
+import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
 
 export default class ApartmentScene extends Phaser.Scene {
@@ -22,6 +23,8 @@ export default class ApartmentScene extends Phaser.Scene {
   create() {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
+
+    this.cameras.main.fadeIn(350, 10, 10, 15);
 
     // AI-painted dusk living room backdrop — scaled to fill canvas
     if (this.textures.exists('bg-apartment')) {
@@ -47,6 +50,15 @@ export default class ApartmentScene extends Phaser.Scene {
     this.phoneGlow = this.add.rectangle(310, h - 138, 24, 42, 0x6acfff, 0.4);
 
     this.player = new Player(this, 200, h - 150);
+
+    // Distance preview — a faint truck silhouette "through the window" that
+    // fades up as proximity increases, reinforcing the audio cue visually.
+    this.windowTruck = null;
+    if (this.textures.exists('truck-far')) {
+      this.windowTruck = this.add.image(w - 165, 130, 'truck-far')
+        .setDisplaySize(180, 100)
+        .setAlpha(0);
+    }
 
     // HUD — top bar
     this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} / 5`, {
@@ -83,8 +95,12 @@ export default class ApartmentScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.notifGroup.add([notifBg, this.notifText]);
 
-    // Audio — core mechanic
+    // Audio — core mechanic. Hand off to real BGM if user loaded one.
     this.audio = new AudioDistance(this);
+    if (this.cache.audio.exists('bgm-main')) {
+      const bgm = this.sound.add('bgm-main', { loop: true, volume: 0 });
+      this.audio.setRealSound(bgm);
+    }
     this.audio.start();
 
     // Input
@@ -131,6 +147,15 @@ export default class ApartmentScene extends Phaser.Scene {
       this.player.urgent();
     }
 
+    // Visual proximity preview through the window.
+    if (this.windowTruck) {
+      if (proximity > 0.85 && this.textures.exists('truck-mid') && this.windowTruck.texture.key !== 'truck-mid') {
+        this.windowTruck.setTexture('truck-mid').setDisplaySize(200, 110);
+      }
+      const targetAlpha = Math.max(0, (proximity - 0.35) / 0.65) * 0.85;
+      this.windowTruck.setAlpha(Phaser.Math.Linear(this.windowTruck.alpha, targetAlpha, 0.05));
+    }
+
     // Auto-fail if player stays too long after truck arrives + 5 sec grace
     if (proximity >= 1 && this.elapsed > this.level.truckArrivalTime + 5) {
       this.leaveForTruck(true);
@@ -141,6 +166,7 @@ export default class ApartmentScene extends Phaser.Scene {
     if (this.left) return;
     this.slackPoints += 2;
     this.slackLabel.setText(`Slack: ${this.slackPoints}`);
+    Sfx.scroll(this);
     this.tweens.add({
       targets: this.phoneGlow,
       alpha: 0.8,
@@ -153,6 +179,7 @@ export default class ApartmentScene extends Phaser.Scene {
     if (this.left) return;
     this.slackPoints += 1;
     this.slackLabel.setText(`Slack: ${this.slackPoints}`);
+    Sfx.static(this);
     this.tweens.add({
       targets: this.tvScreen,
       fillColor: { from: 0x3a5050, to: 0xe8b96a },
@@ -171,6 +198,7 @@ export default class ApartmentScene extends Phaser.Scene {
 
   showNotification() {
     if (this.left) return;
+    Sfx.ping(this);
     this.notifText.setText(randomNag(this));
     this.notifGroup.setVisible(true).setAlpha(0);
     this.tweens.add({

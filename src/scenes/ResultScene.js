@@ -21,6 +21,7 @@ export default class ResultScene extends Phaser.Scene {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
+    this.cameras.main.fadeIn(450, 10, 10, 15);
     this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
 
     this.add.text(w / 2, 60, `Day ${this.day} — Result`, {
@@ -29,6 +30,12 @@ export default class ResultScene extends Phaser.Scene {
 
     const outcome = this.caught ? 'caught' : 'missed';
     const mom = getMomLine(this.day, outcome);
+
+    // Play recorded mom voice if loaded; otherwise silence — the on-screen line reads.
+    const voiceKey = `mom-d${this.day}-${outcome}`;
+    if (this.cache.audio.exists(voiceKey)) {
+      this.sound.play(voiceKey, { volume: 0.9 });
+    }
 
     // Pick the painted mom portrait keyed to outcome + day.
     let portraitKey = null;
@@ -84,11 +91,14 @@ export default class ResultScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-SPACE', () => {
-      if (this.day >= TOTAL_DAYS) {
-        this.scene.start(SCENES.ENDING);
-      } else {
-        this.scene.start(SCENES.APARTMENT, { day: this.day + 1 });
-      }
+      this.cameras.main.fadeOut(400, 10, 10, 15);
+      this.time.delayedCall(430, () => {
+        if (this.day >= TOTAL_DAYS) {
+          this.scene.start(SCENES.ENDING);
+        } else {
+          this.scene.start(SCENES.APARTMENT, { day: this.day + 1 });
+        }
+      });
     });
   }
 }

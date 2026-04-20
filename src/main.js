@@ -7,7 +7,6 @@ import ApartmentScene from './scenes/ApartmentScene.js';
 import StreetScene from './scenes/StreetScene.js';
 import ResultScene from './scenes/ResultScene.js';
 import EndingScene from './scenes/EndingScene.js';
-import UIScene from './scenes/UIScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import IntroScene from './scenes/IntroScene.js';
 
@@ -37,7 +36,6 @@ const config = {
     StreetScene,
     ResultScene,
     EndingScene,
-    UIScene,
     PauseScene,
     IntroScene,
   ],

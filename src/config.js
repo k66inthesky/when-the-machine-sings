@@ -18,7 +18,6 @@ export const SCENES = {
   STREET: 'StreetScene',
   RESULT: 'ResultScene',
   ENDING: 'EndingScene',
-  UI: 'UIScene',
   PAUSE: 'PauseScene',
   INTRO: 'IntroScene',
 };

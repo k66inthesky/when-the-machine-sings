@@ -279,8 +279,7 @@ export default class StreetScene extends Phaser.Scene {
 
   pickAlleyBg() {
     if (this.level.weather === 'rain') return 'bg-alley-rain';
-    // Night-market variant used on later/warmer days; simple day-based rotation.
-    if (this.level.day === 3 || this.level.day === 5) return 'bg-alley-night-market';
+    if (this.level.weather === 'nightmarket') return 'bg-alley-night-market';
     return 'bg-alley-clear';
   }
 

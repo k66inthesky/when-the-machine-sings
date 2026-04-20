@@ -113,13 +113,32 @@ export default class StreetScene extends Phaser.Scene {
     this.audio.setProximity(0.9);
     this.audio.start();
 
-    // Truck drives slowly leftward, escape time scales with level
+    // Brief "GO!" beat so the player can orient before the truck moves.
+    this.throwLocked = true;
+    const goText = this.add.text(w / 2, h / 2 - 20, 'GO!', {
+      fontFamily: 'serif', fontSize: '48px', color: '#e8b96a', fontStyle: 'bold',
+      stroke: '#2a1a10', strokeThickness: 5,
+    }).setOrigin(0.5).setAlpha(0).setScale(0.6);
+    this.tweens.add({
+      targets: goText, alpha: 1, scale: 1.1, duration: 260, ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: goText, alpha: 0, duration: 400, delay: 280,
+          onComplete: () => goText.destroy(),
+        });
+      },
+    });
+
+    // Truck drives slowly leftward, escape time scales with level.
+    // 900ms delay aligns with the GO! beat so the truck starts when the cue fades.
     const escapeDuration = 7000 / this.level.streetSpeed;
     this.truckTween = this.tweens.add({
       targets: this.truck,
       x: -200,
       duration: escapeDuration,
+      delay: 900,
       ease: 'Linear',
+      onStart: () => { this.throwLocked = false; },
       onComplete: () => this.endChase(),
     });
 

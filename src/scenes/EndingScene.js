@@ -112,12 +112,16 @@ export default class EndingScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-SPACE', () => {
-      this.actIndex += 1;
-      if (this.actIndex >= ACTS.length) {
-        this.scene.start(SCENES.TITLE);
-      } else {
-        this.showAct();
-      }
+      this.cameras.main.fadeOut(500, 5, 5, 10);
+      this.time.delayedCall(520, () => {
+        this.actIndex += 1;
+        if (this.actIndex >= ACTS.length) {
+          this.scene.start(SCENES.TITLE);
+        } else {
+          this.cameras.main.fadeIn(500, 5, 5, 10);
+          this.showAct();
+        }
+      });
     });
   }
 

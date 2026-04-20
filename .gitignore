@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+.env
+.env.local
+.vite/
+*.log
+.vscode/
+.idea/
+
+# AI-generated assets work files (keep only final)
+assets/prompts/_scratch/

@@ -1,0 +1,26 @@
+{
+  "name": "when-the-machine-sings",
+  "version": "0.1.0",
+  "description": "A short narrative arcade game about the Taiwanese garbage truck. Gamedev.js Jam 2026 entry.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "gamedevjs-jam-2026",
+    "phaser3",
+    "html5",
+    "taiwan",
+    "narrative"
+  ],
+  "author": "k66inthesky",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}

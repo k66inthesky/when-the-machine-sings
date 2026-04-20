@@ -30,31 +30,29 @@ export default class StreetScene extends Phaser.Scene {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
-    // Dusk alley background
-    const skyTop = this.level.weather === 'rain' ? 0x3a3a4a : 0xd97a5a;
-    const skyBottom = this.level.weather === 'rain' ? 0x2a2a35 : 0x6a3a5a;
-    this.add.rectangle(0, 0, w, h * 0.55, skyTop).setOrigin(0);
-    this.add.rectangle(0, h * 0.55, w, h * 0.10, skyBottom).setOrigin(0);
-
-    // Building silhouettes (multi-layer for depth)
-    for (let i = 0; i < 8; i++) {
-      const bx = i * (w / 7);
-      const bh = 120 + (i % 3) * 40;
-      this.add.rectangle(bx, h * 0.65 - bh, w / 7 + 4, bh, 0x3a1f30).setOrigin(0, 1);
-    }
-
-    // Power lines
-    for (let i = 0; i < 3; i++) {
-      this.add.line(0, 0, 0, 70 + i * 12, w, 60 + i * 12, 0x1a1a20, 1).setOrigin(0, 0).setLineWidth(1);
-    }
-
-    // Street
-    this.add.rectangle(0, h * 0.65, w, h * 0.35, 0x2a1a20).setOrigin(0);
-    this.add.rectangle(0, h * 0.65, w, 4, 0x5a4a30).setOrigin(0);
-
-    // Scooter silhouettes parked on sidewalk
-    for (let i = 0; i < 5; i++) {
-      this.add.rectangle(80 + i * 120, h * 0.68, 32, 14, 0x3a2a30);
+    // Painted alley backdrop — weather + day choose which variant
+    const bgKey = this.pickAlleyBg();
+    if (bgKey && this.textures.exists(bgKey)) {
+      this.add.image(w / 2, h / 2, bgKey).setDisplaySize(w, h);
+      this.add.rectangle(0, 0, w, h, 0x0a0818, 0.12).setOrigin(0);
+    } else {
+      const skyTop = this.level.weather === 'rain' ? 0x3a3a4a : 0xd97a5a;
+      const skyBottom = this.level.weather === 'rain' ? 0x2a2a35 : 0x6a3a5a;
+      this.add.rectangle(0, 0, w, h * 0.55, skyTop).setOrigin(0);
+      this.add.rectangle(0, h * 0.55, w, h * 0.10, skyBottom).setOrigin(0);
+      for (let i = 0; i < 8; i++) {
+        const bx = i * (w / 7);
+        const bh = 120 + (i % 3) * 40;
+        this.add.rectangle(bx, h * 0.65 - bh, w / 7 + 4, bh, 0x3a1f30).setOrigin(0, 1);
+      }
+      for (let i = 0; i < 3; i++) {
+        this.add.line(0, 0, 0, 70 + i * 12, w, 60 + i * 12, 0x1a1a20, 1).setOrigin(0, 0).setLineWidth(1);
+      }
+      this.add.rectangle(0, h * 0.65, w, h * 0.35, 0x2a1a20).setOrigin(0);
+      this.add.rectangle(0, h * 0.65, w, 4, 0x5a4a30).setOrigin(0);
+      for (let i = 0; i < 5; i++) {
+        this.add.rectangle(80 + i * 120, h * 0.68, 32, 14, 0x3a2a30);
+      }
     }
 
     // Rain overlay
@@ -77,9 +75,10 @@ export default class StreetScene extends Phaser.Scene {
     this.truck = new TrashTruck(this, w + 120, h * 0.80);
     this.truck.rumble(this);
 
-    // Player on left
+    // Player on left, walking toward the truck
     this.player = new Player(this, 100, h * 0.82);
     this.player.setFacing('right');
+    this.player.walk();
 
     // HUD
     this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} — chase`, {
@@ -238,6 +237,13 @@ export default class StreetScene extends Phaser.Scene {
         forcedExit: this.forcedExit,
       });
     });
+  }
+
+  pickAlleyBg() {
+    if (this.level.weather === 'rain') return 'bg-alley-rain';
+    // Night-market variant used on later/warmer days; simple day-based rotation.
+    if (this.level.day === 3 || this.level.day === 5) return 'bg-alley-night-market';
+    return 'bg-alley-clear';
   }
 
   shutdown() {

@@ -29,10 +29,30 @@ export default class ResultScene extends Phaser.Scene {
 
     const outcome = this.caught ? 'caught' : 'missed';
     const mom = getMomLine(this.day, outcome);
-    this.add.text(w / 2, 130, mom, {
-      fontFamily: 'serif', fontSize: '18px', color: '#e8dccb', fontStyle: 'italic',
-      align: 'center', wordWrap: { width: w - 120 },
-    }).setOrigin(0.5);
+
+    // Pick the painted mom portrait keyed to outcome + day.
+    let portraitKey = null;
+    if (!this.caught) {
+      portraitKey = 'mom-angry';
+    } else if (this.day >= 4) {
+      portraitKey = 'mom-proud';
+    } else {
+      portraitKey = 'mom-satisfied';
+    }
+    const hasPortrait = portraitKey && this.textures.exists(portraitKey);
+
+    if (hasPortrait) {
+      this.add.image(100, 170, portraitKey).setDisplaySize(140, 214).setOrigin(0.5);
+      this.add.text(w / 2 + 50, 170, mom, {
+        fontFamily: 'serif', fontSize: '18px', color: '#e8dccb', fontStyle: 'italic',
+        align: 'left', wordWrap: { width: w - 280 },
+      }).setOrigin(0.5);
+    } else {
+      this.add.text(w / 2, 130, mom, {
+        fontFamily: 'serif', fontSize: '18px', color: '#e8dccb', fontStyle: 'italic',
+        align: 'center', wordWrap: { width: w - 120 },
+      }).setOrigin(0.5);
+    }
 
     // Score breakdown
     const slackScore = this.slackPoints * 5;

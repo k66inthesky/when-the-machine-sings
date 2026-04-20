@@ -54,7 +54,13 @@ export default class EndingScene extends Phaser.Scene {
     const h = GAME_HEIGHT;
 
     this.children.removeAll();
-    this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
+    if (this.textures.exists('bg-yard-ending')) {
+      this.add.image(w / 2, h / 2, 'bg-yard-ending').setDisplaySize(w, h);
+      // Heavy darken so text stays legible over the painted scene.
+      this.add.rectangle(0, 0, w, h, 0x0a0a0f, 0.55).setOrigin(0);
+    } else {
+      this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
+    }
 
     const act = ACTS[this.actIndex];
 

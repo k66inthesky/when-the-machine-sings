@@ -23,28 +23,27 @@ export default class ApartmentScene extends Phaser.Scene {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
-    // Dusk living room backdrop (procedural placeholder)
-    this.add.rectangle(0, 0, w, h, 0x2a1528).setOrigin(0);
-    this.add.rectangle(0, h - 80, w, 80, 0x3a2030).setOrigin(0); // floor
+    // AI-painted dusk living room backdrop — scaled to fill canvas
+    if (this.textures.exists('bg-apartment')) {
+      this.add.image(w / 2, h / 2, 'bg-apartment').setDisplaySize(w, h);
+      // Soft dusk tint so HUD text stays readable
+      this.add.rectangle(0, 0, w, h, 0x1a1028, 0.18).setOrigin(0);
+    } else {
+      this.add.rectangle(0, 0, w, h, 0x2a1528).setOrigin(0);
+      this.add.rectangle(0, h - 80, w, 80, 0x3a2030).setOrigin(0);
+    }
 
-    // Window with dusk sky
-    const windowFrame = this.add.rectangle(w - 160, 130, 220, 140, 0xe8b96a).setStrokeStyle(4, 0x4a3020);
-    this.add.rectangle(w - 160, 130, 210, 130, 0xd97a5a);
-    this.add.line(0, 0, w - 270, 130, w - 50, 130, 0x4a3020, 1).setLineWidth(2);
-    this.add.line(0, 0, w - 160, 60, w - 160, 200, 0x4a3020, 1).setLineWidth(2);
-
-    // Sofa
-    this.add.rectangle(240, h - 180, 220, 70, 0xc97a8a).setStrokeStyle(2, 0x4a2030);
-    this.add.rectangle(240, h - 210, 220, 30, 0xd98a9a);
-
-    // CRT TV
-    this.tv = this.add.rectangle(500, h - 200, 100, 70, 0x2a1a2a).setStrokeStyle(3, 0x1a1a1a);
-    this.tvScreen = this.add.rectangle(500, h - 205, 84, 56, 0x3a5050);
+    // Procedural furniture is only drawn when the painted bg is absent —
+    // otherwise we let the AI image carry the room and use corner indicators.
+    const hasBg = this.textures.exists('bg-apartment');
+    this.tv = this.add.rectangle(500, h - 200, 100, 70, 0x2a1a2a)
+      .setStrokeStyle(3, 0x1a1a1a).setVisible(!hasBg);
+    this.tvScreen = this.add.rectangle(500, h - 205, 84, 56, 0x3a5050).setVisible(!hasBg);
     this.tvGlow = this.add.rectangle(500, h - 205, 84, 56, 0x9ac0c0, 0.3);
 
-    // Coffee table with phone
-    this.add.rectangle(310, h - 130, 100, 30, 0x6a4520);
-    this.phone = this.add.rectangle(310, h - 138, 28, 46, 0x1a1a2a).setStrokeStyle(1, 0x6acfff);
+    this.tableObj = this.add.rectangle(310, h - 130, 100, 30, 0x6a4520).setVisible(!hasBg);
+    this.phone = this.add.rectangle(310, h - 138, 28, 46, 0x1a1a2a)
+      .setStrokeStyle(1, 0x6acfff).setVisible(!hasBg);
     this.phoneGlow = this.add.rectangle(310, h - 138, 24, 42, 0x6acfff, 0.4);
 
     this.player = new Player(this, 200, h - 150);

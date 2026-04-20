@@ -80,7 +80,7 @@ export default class TitleScene extends Phaser.Scene {
 
     this.input.keyboard.once('keydown-SPACE', () => {
       this.cameras.main.fadeOut(450, 5, 5, 10);
-      this.time.delayedCall(470, () => this.scene.start(SCENES.APARTMENT, { day: 1 }));
+      this.time.delayedCall(470, () => this.scene.start(SCENES.INTRO));
     });
   }
 

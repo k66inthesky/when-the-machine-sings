@@ -15,6 +15,7 @@ export default class ResultScene extends Phaser.Scene {
     this.bagCount = data.bagCount || 1;
     this.caught = !!data.caught;
     this.forcedExit = !!data.forcedExit;
+    this.priorTotal = data.totalScore || 0;
   }
 
   create() {
@@ -67,7 +68,8 @@ export default class ResultScene extends Phaser.Scene {
     const fullClearBonus = this.bagsHit >= this.bagCount ? 100 : 0;
     const missedPenalty = this.caught ? 0 : -75;
     const forcedPenalty = this.forcedExit ? -50 : 0;
-    const total = slackScore + bagScore + fullClearBonus + missedPenalty + forcedPenalty;
+    const dayTotal = slackScore + bagScore + fullClearBonus + missedPenalty + forcedPenalty;
+    this.runningTotal = this.priorTotal + dayTotal;
 
     const lines = [
       `Slack points : ${this.slackPoints} × 5 = ${slackScore}`,
@@ -76,7 +78,8 @@ export default class ResultScene extends Phaser.Scene {
       missedPenalty ? `Missed the truck : ${missedPenalty}` : null,
       forcedPenalty ? `Ran out too late : ${forcedPenalty}` : null,
       ``,
-      `Total : ${total}`,
+      `Day ${this.day} total : ${dayTotal}`,
+      `Week running total : ${this.runningTotal}`,
     ].filter(Boolean);
 
     this.add.text(w / 2, h / 2 + 30, lines.join('\n'), {
@@ -94,9 +97,9 @@ export default class ResultScene extends Phaser.Scene {
       this.cameras.main.fadeOut(400, 10, 10, 15);
       this.time.delayedCall(430, () => {
         if (this.day >= TOTAL_DAYS) {
-          this.scene.start(SCENES.ENDING);
+          this.scene.start(SCENES.ENDING, { totalScore: this.runningTotal });
         } else {
-          this.scene.start(SCENES.APARTMENT, { day: this.day + 1 });
+          this.scene.start(SCENES.APARTMENT, { day: this.day + 1, totalScore: this.runningTotal });
         }
       });
     });

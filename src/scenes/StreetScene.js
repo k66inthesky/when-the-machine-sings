@@ -21,6 +21,7 @@ export default class StreetScene extends Phaser.Scene {
     this.slackPoints = data.slackPoints || 0;
     this.proximityAtExit = data.proximityAtExit ?? 0.5;
     this.forcedExit = !!data.forcedExit;
+    this.totalScore = data.totalScore || 0;
     this.bagsThrown = 0;
     this.bagsHit = 0;
     this.finished = false;
@@ -252,6 +253,7 @@ export default class StreetScene extends Phaser.Scene {
         bagCount: this.level.bagCount,
         caught,
         forcedExit: this.forcedExit,
+        totalScore: this.totalScore,
       });
     });
   }

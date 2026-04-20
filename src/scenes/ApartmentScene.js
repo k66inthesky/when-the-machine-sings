@@ -13,6 +13,7 @@ export default class ApartmentScene extends Phaser.Scene {
 
   init(data) {
     this.level = getLevel(data.day || 1);
+    this.totalScore = data.totalScore || 0;
     this.slackPoints = 0;
     this.elapsed = 0;
     this.bagsReady = 0;
@@ -83,7 +84,7 @@ export default class ApartmentScene extends Phaser.Scene {
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
     // Controls hint
-    this.hint = this.add.text(w / 2, h - 26, 'E: phone   T: TV   ENTER: head downstairs   ESC: pause', {
+    this.hint = this.add.text(w / 2, h - 26, 'E: phone   T: TV   ENTER: go downstairs   ESC: pause   M: mute', {
       fontFamily: 'sans-serif', fontSize: '13px', color: '#aaa',
     }).setOrigin(0.5);
 
@@ -252,6 +253,7 @@ export default class ApartmentScene extends Phaser.Scene {
         slackPoints: this.slackPoints,
         proximityAtExit: proximity,
         forcedExit: forced,
+        totalScore: this.totalScore,
       });
     });
   }

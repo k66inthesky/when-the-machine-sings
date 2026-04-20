@@ -44,6 +44,10 @@ export default class EndingScene extends Phaser.Scene {
     super(SCENES.ENDING);
   }
 
+  init(data) {
+    this.totalScore = data?.totalScore || 0;
+  }
+
   create() {
     this.actIndex = 0;
     this.cameras.main.fadeIn(700, 5, 5, 10);
@@ -89,6 +93,11 @@ export default class EndingScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const isLast = this.actIndex === ACTS.length - 1;
+    if (isLast) {
+      this.add.text(w / 2, h - 72, `Your week: ${this.totalScore} points`, {
+        fontFamily: 'monospace', fontSize: '13px', color: '#e8b96a',
+      }).setOrigin(0.5);
+    }
     const prompt = this.add.text(
       w / 2,
       h - 40,

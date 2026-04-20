@@ -18,7 +18,9 @@ You play a resident chasing down the evening ritual, and then you follow the tru
 
 **Browser:** [itch.io link coming soon]
 
-**Controls:** Arrow keys / WASD, `E` to interact, `Space` to throw, `Esc` to pause.
+**Controls:** `←` `→` to move, `E` phone, `T` TV, `Enter` head downstairs, `Space` throw bag, `Esc` pause, `M` mute.
+
+Jump straight to a specific day with `?day=N` (1–5) for quick re-runs.
 
 ## Tech Stack
 

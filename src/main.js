@@ -8,6 +8,7 @@ import StreetScene from './scenes/StreetScene.js';
 import ResultScene from './scenes/ResultScene.js';
 import EndingScene from './scenes/EndingScene.js';
 import UIScene from './scenes/UIScene.js';
+import PauseScene from './scenes/PauseScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -36,6 +37,7 @@ const config = {
     ResultScene,
     EndingScene,
     UIScene,
+    PauseScene,
   ],
 };
 

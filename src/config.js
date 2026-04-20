@@ -19,4 +19,5 @@ export const SCENES = {
   RESULT: 'ResultScene',
   ENDING: 'EndingScene',
   UI: 'UIScene',
+  PAUSE: 'PauseScene',
 };

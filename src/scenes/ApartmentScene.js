@@ -83,9 +83,19 @@ export default class ApartmentScene extends Phaser.Scene {
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
     // Controls hint
-    this.hint = this.add.text(w / 2, h - 26, 'E: scroll phone   T: watch TV   ENTER: head downstairs with the bag', {
+    this.hint = this.add.text(w / 2, h - 26, 'E: phone   T: TV   ENTER: head downstairs   ESC: pause', {
       fontFamily: 'sans-serif', fontSize: '13px', color: '#aaa',
     }).setOrigin(0.5);
+
+    // Tiny ♪ notes next to the truck bar — a visual echo of the Für Elise motif
+    // so players with sound muted still read the mechanic.
+    this.noteGlyphs = [];
+    for (let i = 0; i < 3; i++) {
+      const g = this.add.text(w - 236 - i * 14, 18, '♪', {
+        fontFamily: 'serif', fontSize: '14px', color: '#e8b96a',
+      }).setOrigin(0.5, 0).setAlpha(0);
+      this.noteGlyphs.push(g);
+    }
 
     // Notification popup (hidden by default)
     this.notifGroup = this.add.container(0, 0).setVisible(false);
@@ -107,6 +117,11 @@ export default class ApartmentScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-E', () => this.scrollPhone());
     this.input.keyboard.on('keydown-T', () => this.toggleTv());
     this.input.keyboard.on('keydown-ENTER', () => this.leaveForTruck());
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.left) return;
+      this.scene.pause();
+      this.scene.launch(SCENES.PAUSE, { resumeKey: SCENES.APARTMENT });
+    });
 
     // Truck approach loop — over truckArrivalTime seconds, proximity goes 0 -> 1
     this.time.addEvent({
@@ -145,6 +160,15 @@ export default class ApartmentScene extends Phaser.Scene {
     if (proximity > 0.9) {
       this.truckLabel.setColor('#ff6b8a');
       this.player.urgent();
+    }
+
+    // Fade the ♪ glyphs in as proximity rises — silent-friendly signal.
+    if (this.noteGlyphs) {
+      const noteAlpha = Math.max(0, Math.min(1, (proximity - 0.25) / 0.65));
+      this.noteGlyphs.forEach((g, i) => {
+        const pulse = 0.6 + 0.4 * Math.sin(this.elapsed * 2 + i * 0.8);
+        g.setAlpha(noteAlpha * pulse);
+      });
     }
 
     // Visual proximity preview through the window.

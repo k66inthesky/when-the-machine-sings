@@ -125,6 +125,11 @@ export default class StreetScene extends Phaser.Scene {
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown-SPACE', () => this.throwBag());
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.finished) return;
+      this.scene.pause();
+      this.scene.launch(SCENES.PAUSE, { resumeKey: SCENES.STREET });
+    });
     this.input.keyboard.on('keydown-LEFT', () => {
       this.player.x = Math.max(60, this.player.x - 18);
     });
@@ -218,6 +223,7 @@ export default class StreetScene extends Phaser.Scene {
   }
 
   flashHit() {
+    this.cameras.main.shake(160, 0.006);
     const f = this.add.text(this.truck.x - 20, this.truck.y - 60, '+HIT', {
       fontFamily: 'sans-serif', fontSize: '18px', color: '#6affaa', fontStyle: 'bold',
     }).setOrigin(0.5);

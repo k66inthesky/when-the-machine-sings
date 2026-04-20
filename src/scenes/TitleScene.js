@@ -10,6 +10,14 @@ export default class TitleScene extends Phaser.Scene {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
+    // Debug shortcut — `?day=3` skips straight into that day's apartment.
+    // Handy for jam judging + my own QA. Silently ignored when absent.
+    const debugDay = this.parseDebugDay();
+    if (debugDay) {
+      this.scene.start(SCENES.APARTMENT, { day: debugDay });
+      return;
+    }
+
     this.cameras.main.fadeIn(500, 5, 5, 10);
 
     // Painted night-market alley as title backdrop — carries the mood.
@@ -74,5 +82,16 @@ export default class TitleScene extends Phaser.Scene {
       this.cameras.main.fadeOut(450, 5, 5, 10);
       this.time.delayedCall(470, () => this.scene.start(SCENES.APARTMENT, { day: 1 }));
     });
+  }
+
+  parseDebugDay() {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const raw = p.get('day');
+      if (!raw) return null;
+      const n = parseInt(raw, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 5) return n;
+    } catch (_) {}
+    return null;
   }
 }

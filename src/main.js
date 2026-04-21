@@ -46,6 +46,35 @@ if (import.meta.env?.DEV) {
   window.__PHASER_GAME__ = game;
 }
 
+// Global AudioContext unlock — browsers require a user gesture before
+// any audio plays. Phaser sets up its own unlock path, but on some
+// browser + scene-graph combinations the ctx ends up `suspended` even
+// after SPACE on the title. Result: the Für Elise BGM is wired up and
+// "playing" at volume 0 but the masterGain never ramps because the
+// whole context is frozen. Belt-and-braces: resume on the first
+// pointerdown OR keydown anywhere, then detach ourselves so we never
+// fight a user-triggered mute (M key) that legitimately suspends.
+const unlockAudio = () => {
+  const ctx = game.sound && game.sound.context;
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+  // Give Phaser a nudge too — its internal unlock flag gates HTML5
+  // Audio fallback on Safari.
+  if (game.sound && typeof game.sound.unlock === 'function') {
+    try { game.sound.unlock(); } catch (_) {}
+  }
+};
+const onFirstGesture = () => {
+  unlockAudio();
+  window.removeEventListener('pointerdown', onFirstGesture);
+  window.removeEventListener('keydown', onFirstGesture);
+  window.removeEventListener('touchstart', onFirstGesture);
+};
+window.addEventListener('pointerdown', onFirstGesture);
+window.addEventListener('keydown', onFirstGesture);
+window.addEventListener('touchstart', onFirstGesture, { passive: true });
+
 // Global mute toggle — M at any time.
 // AudioDistance's synth oscillators share Phaser's AudioContext (see
 // AudioDistance.js:32), so suspending the ctx silences both the synth

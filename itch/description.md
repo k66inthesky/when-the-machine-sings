@@ -40,6 +40,16 @@ On-screen buttons also work, so you can play with a mouse — or on a phone in l
 
 **Machines.** The garbage truck *is* a machine, but in Taiwan it's also a nightly social ritual — a clock, a community signal, a performance of an 18th-century melody by a sanitation vehicle. The game asks: what happens inside the machine's routine? Who keeps it running? What do we miss when we only notice the machine and not the people inside it?
 
+## Jam challenges
+
+This entry is submitted for:
+
+- 🏆 **Main ranking** (Innovation / Theme / Gameplay / Graphics / Audio)
+- 🐙 **Open Source** — MIT, public repo, readable architecture
+- 🎮 **Build it with Phaser** — Phaser 3.90
+- 📺 **YouTube Playables** — SDK integrated (firstFrameReady, gameReady, cloud saves, onPause/onResume, isAudioEnabled honored)
+- 🌊 **Deploy to Wavedash** — same build deployed via CLI
+
 ## Credits
 
 - *Für Elise* — Ludwig van Beethoven (public domain)

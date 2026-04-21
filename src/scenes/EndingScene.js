@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import Playables from '../systems/Playables.js';
 
 const ACTS = [
   {
@@ -60,7 +61,7 @@ export default class EndingScene extends Phaser.Scene {
   init(data) {
     this.totalScore = data?.totalScore || 0;
     // Week's done — clear the resume slot.
-    try { localStorage.removeItem('wtms_progress'); } catch (_) {}
+    Playables.clearProgress();
   }
 
   create() {
@@ -153,15 +154,19 @@ export default class EndingScene extends Phaser.Scene {
   }
 
   persistHighScore(score) {
-    try {
-      const prev = parseInt(localStorage.getItem('wtms_best') || '0', 10) || 0;
-      if (score > prev) {
-        localStorage.setItem('wtms_best', String(score));
-        return score;
-      }
-      return prev;
-    } catch (_) {
+    // Playables.setBest compares against the cached value and only
+    // writes if score is a new best. Both paths (YT cloud / localStorage)
+    // are handled inside the adapter. YT certification requires score
+    // sent via sendScore matches the best in save — so we mirror both.
+    const prev = Playables.getBest();
+    if (score > prev) {
+      Playables.setBest(score);
+      Playables.sendScore(score);
       return score;
     }
+    // Still send the best-known score so YT's leaderboard is consistent
+    // when the current run wasn't a new high.
+    Playables.sendScore(prev);
+    return prev;
   }
 }

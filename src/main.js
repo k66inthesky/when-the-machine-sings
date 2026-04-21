@@ -9,6 +9,7 @@ import ResultScene from './scenes/ResultScene.js';
 import EndingScene from './scenes/EndingScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import IntroScene from './scenes/IntroScene.js';
+import Playables from './systems/Playables.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -41,10 +42,53 @@ const config = {
   ],
 };
 
+// Kick off the save-store load BEFORE Phaser boots. In YT Playables the
+// spec says we MUST await loadData() before any saveData() — so we gate
+// scene startup on this. In every other env it resolves instantly.
+// BootScene also awaits Playables.init() defensively in case a future
+// refactor races ahead of this top-level kickoff.
+Playables.init();
+
 const game = new Phaser.Game(config);
 if (import.meta.env?.DEV) {
   window.__PHASER_GAME__ = game;
 }
+
+// Respect YouTube's mute button in the Playables container. Outside YT
+// this is a no-op (the adapter returns isAudioEnabled=true + an empty
+// unsubscribe) so the M-key handler below remains the only mute path.
+const applyYtAudioState = (enabled) => {
+  game.sound.mute = !enabled;
+  const ctx = game.sound.context;
+  if (ctx) {
+    if (!enabled && ctx.state === 'running') ctx.suspend().catch(() => {});
+    else if (enabled && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  }
+};
+applyYtAudioState(Playables.isAudioEnabled());
+Playables.onAudioEnabledChange(applyYtAudioState);
+
+// YT Playables onPause / onResume: MUST freeze all execution (game loop,
+// music, interactions, network, rendering) and resume cleanly.
+let pausedByPlayables = false;
+Playables.onPause(() => {
+  if (pausedByPlayables) return;
+  pausedByPlayables = true;
+  // Pause every active scene so tweens/time events freeze.
+  game.scene.scenes.forEach((s) => { if (s.scene.isActive()) s.scene.pause(); });
+  game.sound.mute = true;
+  const ctx = game.sound.context;
+  if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+  game.loop.sleep();
+});
+Playables.onResume(() => {
+  if (!pausedByPlayables) return;
+  pausedByPlayables = false;
+  game.loop.wake();
+  game.scene.scenes.forEach((s) => { if (s.scene.isPaused()) s.scene.resume(); });
+  const enabled = Playables.isAudioEnabled();
+  applyYtAudioState(enabled);
+});
 
 // Global AudioContext unlock — browsers require a user gesture before
 // any audio plays. Phaser sets up its own unlock path, but on some

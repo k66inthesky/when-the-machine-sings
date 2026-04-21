@@ -1,0 +1,11 @@
+# Wavedash deployment manifest.
+#
+# Fill in `game_id` after running `wavedash init` or picking a game in the
+# Wavedash Developer Portal — `wavedash build push` will refuse to run without it.
+#
+# upload_dir points at Vite's production output; run `npm run build` first.
+# entrypoint defaults to index.html which is what Vite emits, so we leave it
+# implicit.
+
+game_id = "REPLACE_ME_AFTER_wavedash_init"
+upload_dir = "dist"

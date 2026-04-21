@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import Playables from '../systems/Playables.js';
 
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +18,11 @@ export default class PreloadScene extends Phaser.Scene {
       fontSize: '16px',
       color: '#e8dccb',
     }).setOrigin(0.5);
+
+    // YT Playables certification: firstFrameReady() MUST fire once we
+    // are visibly rendering a loading UI. Call it at the end of this
+    // frame so Phaser has committed the draw.
+    this.time.delayedCall(0, () => Playables.firstFrameReady());
 
     this.load.on('progress', (p) => {
       bar.width = 400 * p;

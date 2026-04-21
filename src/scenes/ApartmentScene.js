@@ -5,6 +5,7 @@ import { randomNag } from '../data/dialogue.js';
 import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
+import Playables from '../systems/Playables.js';
 
 export default class ApartmentScene extends Phaser.Scene {
   constructor() {
@@ -18,12 +19,9 @@ export default class ApartmentScene extends Phaser.Scene {
     this.elapsed = 0;
     this.left = false;
     // Persist "I got as far as Day N with total X" so a browser refresh doesn't
-    // wipe progress. ResultScene will clear it when the week wraps at Ending.
-    try {
-      localStorage.setItem('wtms_progress', JSON.stringify({
-        day: this.level.day, totalScore: this.totalScore,
-      }));
-    } catch (_) {}
+    // wipe progress. EndingScene clears it when the week wraps.
+    // In YT Playables this hits ytgame.saveData; on itch it's localStorage.
+    Playables.setProgress({ day: this.level.day, totalScore: this.totalScore });
   }
 
   create() {

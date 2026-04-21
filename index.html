@@ -10,6 +10,11 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>When the Machine Sings</title>
+    <!-- YouTube Playables SDK. On non-Playables hosts this 404s silently
+         and window.ytgame stays undefined — the adapter in src/systems/
+         Playables.js falls back to localStorage. Required to be loaded
+         before any game code per YT Playables certification. -->
+    <script src="https://www.youtube.com/game_api/v1"></script>
     <style>
       html, body {
         margin: 0;

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import Playables from '../systems/Playables.js';
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +8,11 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    // Fire and forget — init() is idempotent and completes instantly
+    // after the first call. Kept in create() so scene switches during
+    // dev don't lose state.
+    Playables.init();
+
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
@@ -79,40 +85,37 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Persistent best from a prior run — silent if none.
-    try {
-      const best = parseInt(localStorage.getItem('wtms_best') || '0', 10);
-      if (best > 0) {
-        this.add.text(w - 14, 14, `Best: ${best}`, {
-          fontFamily: 'monospace', fontSize: '12px', color: '#e8b96a',
-        }).setOrigin(1, 0);
-      }
-    } catch (_) {}
+    const best = Playables.getBest();
+    if (best > 0) {
+      this.add.text(w - 14, 14, `Best: ${best}`, {
+        fontFamily: 'monospace', fontSize: '12px', color: '#e8b96a',
+      }).setOrigin(1, 0);
+    }
 
     // Mid-week resume — if the player closed the tab on Day 3, offer a resume.
-    try {
-      const raw = localStorage.getItem('wtms_progress');
-      if (raw) {
-        const prog = JSON.parse(raw);
-        if (prog && prog.day > 1 && prog.day <= 5) {
-          const resume = this.add.text(w / 2, h / 2 + 100,
-            `[ R — resume Day ${prog.day} (${prog.totalScore} pts) ]`, {
-              fontFamily: 'sans-serif', fontSize: '13px', color: '#6affaa',
-            }).setOrigin(0.5);
-          this.tweens.add({ targets: resume, alpha: 0.5, duration: 900, yoyo: true, repeat: -1 });
-          this.input.keyboard.once('keydown-R', () => {
-            this.cameras.main.fadeOut(350, 5, 5, 10);
-            this.time.delayedCall(380, () => this.scene.start(SCENES.APARTMENT, {
-              day: prog.day, totalScore: prog.totalScore,
-            }));
-          });
-        }
-      }
-    } catch (_) {}
+    const prog = Playables.getProgress();
+    if (prog && prog.day > 1 && prog.day <= 5) {
+      const resume = this.add.text(w / 2, h / 2 + 100,
+        `[ R — resume Day ${prog.day} (${prog.totalScore} pts) ]`, {
+          fontFamily: 'sans-serif', fontSize: '13px', color: '#6affaa',
+        }).setOrigin(0.5);
+      this.tweens.add({ targets: resume, alpha: 0.5, duration: 900, yoyo: true, repeat: -1 });
+      this.input.keyboard.once('keydown-R', () => {
+        this.cameras.main.fadeOut(350, 5, 5, 10);
+        this.time.delayedCall(380, () => this.scene.start(SCENES.APARTMENT, {
+          day: prog.day, totalScore: prog.totalScore,
+        }));
+      });
+    }
 
     this.input.keyboard.once('keydown-SPACE', () => {
       this.cameras.main.fadeOut(450, 5, 5, 10);
       this.time.delayedCall(470, () => this.scene.start(SCENES.INTRO));
     });
+
+    // YT Playables: gameReady() once the title is interactive. Wait a tick
+    // so the prompt is actually on screen before we tell YT to ship us.
+    this.time.delayedCall(16, () => Playables.gameReady());
   }
 
   parseDebugDay() {

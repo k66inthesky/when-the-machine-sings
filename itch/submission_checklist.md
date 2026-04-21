@@ -3,7 +3,7 @@
 Deadline: **2026-04-26 17:00 CET** (Taipei: 2026-04-26 23:00 CST)
 Today: **2026-04-21** — ~5 days of buffer.
 
-## Status (2026-04-21 dawn)
+## Status (2026-04-21 midday)
 
 - Code: complete end-to-end pipeline smoke-tested (Title → Intro → 5 days → Ending → Credits)
 - Art: 6 painted backgrounds + 9 character sprites integrated; more optional assets welcome
@@ -11,6 +11,9 @@ Today: **2026-04-21** — ~5 days of buffer.
 - Voice: 10 mom voice slots wired to Preload (5 days × caught/missed) — waiting on user recording
 - SFX: 8 WebAudio procedural fallbacks in place; real files optional
 - Touch buttons + mute + pause + debug shortcut all shipped
+- Audio context unlock fixed (first-gesture resume in main.js)
+- **YouTube Playables SDK integrated** via `src/systems/Playables.js` adapter — same build runs on itch / YT / Wavedash / localhost with no branching
+- **Wavedash manifest** (`wavedash.toml`) + runbook (`docs/DEPLOY_WAVEDASH.md`) ready to push
 
 ## Before submitting
 
@@ -41,11 +44,26 @@ Today: **2026-04-21** — ~5 days of buffer.
 
 - [ ] Submit via [gamedevjs-2026 jam page](https://itch.io/jam/gamedevjs-2026)
 - [ ] Fill in: Innovation (audio-as-gameplay), Theme (machines ritual), Gameplay, Graphics, Audio
-- [ ] Check all categories relevant for bonus prizes
+- [ ] **Tick every challenge** on the submission form (sign-ups are what enter you — sign-up is free, opt-outs cost prize money):
+  - [ ] Open Source (GitHub Copilot Pro × 5) — repo is public + MIT
+  - [ ] Build it with Phaser (Phaser Editor Pro × 10) — Phaser 3.90
+  - [ ] YouTube Playables (Gemini Pro × 5, fast-track × 10) — SDK is live in the build
+  - [ ] Deploy to Wavedash ($1k / $750 / $500 / $250) — **run `wavedash build push` first** per `docs/DEPLOY_WAVEDASH.md`
+  - [ ] (skip) Ethereum — not integrated
 - [ ] Submit at least 12 hours before deadline to leave buffer for fixes
+
+## Wavedash (one extra step — takes ~10 min)
+
+- [ ] `curl -fsSL https://wavedash.com/cli/install.sh | sh` to install CLI
+- [ ] `wavedash auth login` (browser flow)
+- [ ] `wavedash init` in repo root — fills `game_id` into wavedash.toml
+- [ ] `npm run build` → `wavedash build push`
+- [ ] Publish the pushed build via Wavedash Developer Portal
+- [ ] Paste the Wavedash URL into itch description as a secondary play link
 
 ## Post-submit
 
 - [ ] Share on Gamedev.js jam Discord channel #submissions
 - [ ] Post to X / Mastodon with gameplay gif
 - [ ] Keep the repo public with MIT license
+- [ ] Push committed code to origin/main so Open Source judges see the final state

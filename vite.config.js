@@ -32,7 +32,13 @@ export default defineConfig({
   base: './',
   server: {
     host: true,
-    port: 5173,
+    port: Number(process.env.PORT) || 5173,
+    strictPort: false,
+  },
+  preview: {
+    host: true,
+    port: Number(process.env.PORT) || 4173,
+    strictPort: false,
   },
   build: {
     target: 'es2020',

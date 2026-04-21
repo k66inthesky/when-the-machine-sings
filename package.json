@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "npm run build && node scripts/zip-dist.mjs"
   },
   "keywords": [
     "gamedevjs-jam-2026",
@@ -21,6 +22,7 @@
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "archiver": "^7.0.1",
     "vite": "^5.4.21"
   }
 }

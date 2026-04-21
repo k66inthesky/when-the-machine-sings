@@ -23,6 +23,10 @@ Every evening across Taiwan, yellow sanitation trucks roll through the alleys pl
 | `Enter` | Head downstairs with the bag |
 | `← →` | Move on the street |
 | `Space` | Throw bag / advance dialogue |
+| `Esc` | Pause |
+| `M` | Mute / unmute |
+
+On-screen buttons also work, so you can play with a mouse — or on a phone in landscape mode. Add `?day=3` to the URL to jump to a specific day.
 
 ## Made with
 

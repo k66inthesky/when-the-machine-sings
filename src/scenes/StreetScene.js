@@ -93,9 +93,27 @@ export default class StreetScene extends Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#e8dccb',
     });
 
-    this.hint = this.add.text(w / 2, h - 22, '→ move closer   SPACE: throw bag (when truck is in front of you)', {
+    this.hint = this.add.text(w / 2, h - 50, '← → move · SPACE throw · ESC pause · M mute', {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#999',
     }).setOrigin(0.5);
+
+    // Tap buttons — mobile + mouse affordance alongside keyboard.
+    const btnDefs = [
+      { label: '←', x: w / 2 - 140, action: () => { this.player.x = Math.max(60, this.player.x - 18); } },
+      { label: 'Throw\nSPACE', x: w / 2, action: () => this.throwBag() },
+      { label: '→', x: w / 2 + 140, action: () => { this.player.x = Math.min(w - 60, this.player.x + 24); } },
+    ];
+    btnDefs.forEach((b) => {
+      const bg = this.add.rectangle(b.x, h - 18, 100, 28, 0x1a1a2a, 0.7)
+        .setStrokeStyle(1, 0x6acfff, 0.45);
+      this.add.text(b.x, h - 18, b.label, {
+        fontFamily: 'sans-serif', fontSize: '11px', color: '#6acfff', align: 'center',
+      }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => bg.setFillStyle(0x2a2a4a, 0.85));
+      bg.on('pointerout', () => bg.setFillStyle(0x1a1a2a, 0.7));
+      bg.on('pointerdown', b.action);
+    });
 
     // Timing indicator — a shrinking bar under the player when truck is in range.
     this.rangeBarBg = this.add.rectangle(0, 0, 80, 6, 0x1a1a2a).setVisible(false);

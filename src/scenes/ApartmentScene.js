@@ -96,10 +96,28 @@ export default class ApartmentScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
-    // Controls hint
-    this.hint = this.add.text(w / 2, h - 26, 'E: phone   T: TV   ENTER: go downstairs   ESC: pause   M: mute', {
-      fontFamily: 'sans-serif', fontSize: '13px', color: '#aaa',
+    // Controls hint — also doubles as tap zones on touch devices.
+    this.hint = this.add.text(w / 2, h - 50, 'E: phone   T: TV   ENTER: go downstairs   ESC: pause   M: mute', {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#aaa',
     }).setOrigin(0.5);
+
+    // On-screen buttons — work for mouse + touch; keyboard still works too.
+    const buttonDefs = [
+      { label: 'Phone\nE', x: w / 2 - 180, action: () => this.scrollPhone() },
+      { label: 'TV\nT', x: w / 2, action: () => this.toggleTv() },
+      { label: 'Go →\nENTER', x: w / 2 + 180, action: () => this.leaveForTruck() },
+    ];
+    buttonDefs.forEach((b) => {
+      const bg = this.add.rectangle(b.x, h - 18, 110, 30, 0x1a1a2a, 0.7)
+        .setStrokeStyle(1, 0x6acfff, 0.45);
+      this.add.text(b.x, h - 18, b.label, {
+        fontFamily: 'sans-serif', fontSize: '11px', color: '#6acfff', align: 'center',
+      }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => bg.setFillStyle(0x2a2a4a, 0.85));
+      bg.on('pointerout', () => bg.setFillStyle(0x1a1a2a, 0.7));
+      bg.on('pointerdown', b.action);
+    });
 
     // Tiny ♪ notes next to the truck bar — a visual echo of the Für Elise motif
     // so players with sound muted still read the mechanic.

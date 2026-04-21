@@ -1,15 +1,27 @@
 # Gamedev.js Jam 2026 — Submission Checklist
 
 Deadline: **2026-04-26 17:00 CET** (Taipei: 2026-04-26 23:00 CST)
+Today: **2026-04-21** — ~5 days of buffer.
+
+## Status (2026-04-21 dawn)
+
+- Code: complete end-to-end pipeline smoke-tested (Title → Intro → 5 days → Ending → Credits)
+- Art: 6 painted backgrounds + 9 character sprites integrated; more optional assets welcome
+- Music: 3 Suno tracks loaded (`bgm-main`, `bgm-tension`, `bgm-ending`) — real audio hooks wired
+- Voice: 10 mom voice slots wired to Preload (5 days × caught/missed) — waiting on user recording
+- SFX: 8 WebAudio procedural fallbacks in place; real files optional
+- Touch buttons + mute + pause + debug shortcut all shipped
 
 ## Before submitting
 
 - [ ] `npm run build` produces clean `dist/` with all images + audio
-- [ ] Zip the full `dist/` directory (not just contents) — itch.io will auto-index `index.html`
+- [ ] `npm run release` zips dist into `wtms-submission.zip` (also works manually)
 - [ ] Test the zip by extracting and opening `index.html` locally — make sure assets resolve with relative paths
 - [ ] At least one full 5-day playthrough end-to-end in Chrome + Firefox
 - [ ] Audio unlock works (first click/keypress resumes WebAudio context)
 - [ ] No uncaught errors in console during a full playthrough
+- [ ] Mute toggle (M) and pause (ESC) confirmed on both scenes
+- [ ] `?day=N` URL param still skips to that day (useful for judges)
 
 ## Itch.io page
 

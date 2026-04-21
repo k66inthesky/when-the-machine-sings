@@ -108,9 +108,13 @@ export default class EndingScene extends Phaser.Scene {
     const isLast = this.actIndex === ACTS.length - 1;
     if (isLast) {
       const best = this.persistHighScore(this.totalScore);
+      const grade = this.gradeWeek(this.totalScore);
       const line = best > this.totalScore
         ? `Your week: ${this.totalScore}   •   Best: ${best}`
         : `Your week: ${this.totalScore}   •   New best!`;
+      this.add.text(w / 2, h - 90, `${grade[0]}   ·   ${grade[1]}`, {
+        fontFamily: 'serif', fontSize: '14px', color: '#e8b96a', fontStyle: 'italic',
+      }).setOrigin(0.5);
       this.add.text(w / 2, h - 72, line, {
         fontFamily: 'monospace', fontSize: '13px', color: '#e8b96a',
       }).setOrigin(0.5);
@@ -136,6 +140,14 @@ export default class EndingScene extends Phaser.Scene {
         }
       });
     });
+  }
+
+  gradeWeek(total) {
+    if (total >= 900) return ['Perfect week', '滿分的一週'];
+    if (total >= 600) return ['Good kid', '乖孩子'];
+    if (total >= 300) return ['Got by', '勉強過關'];
+    if (total >= 0) return ['The slack one', '廢柴青年'];
+    return ['Disaster week', '慘淡的一週'];
   }
 
   persistHighScore(score) {

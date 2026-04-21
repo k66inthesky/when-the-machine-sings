@@ -59,6 +59,8 @@ export default class EndingScene extends Phaser.Scene {
 
   init(data) {
     this.totalScore = data?.totalScore || 0;
+    // Week's done — clear the resume slot.
+    try { localStorage.removeItem('wtms_progress'); } catch (_) {}
   }
 
   create() {

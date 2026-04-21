@@ -88,6 +88,27 @@ export default class TitleScene extends Phaser.Scene {
       }
     } catch (_) {}
 
+    // Mid-week resume — if the player closed the tab on Day 3, offer a resume.
+    try {
+      const raw = localStorage.getItem('wtms_progress');
+      if (raw) {
+        const prog = JSON.parse(raw);
+        if (prog && prog.day > 1 && prog.day <= 5) {
+          const resume = this.add.text(w / 2, h / 2 + 100,
+            `[ R — resume Day ${prog.day} (${prog.totalScore} pts) ]`, {
+              fontFamily: 'sans-serif', fontSize: '13px', color: '#6affaa',
+            }).setOrigin(0.5);
+          this.tweens.add({ targets: resume, alpha: 0.5, duration: 900, yoyo: true, repeat: -1 });
+          this.input.keyboard.once('keydown-R', () => {
+            this.cameras.main.fadeOut(350, 5, 5, 10);
+            this.time.delayedCall(380, () => this.scene.start(SCENES.APARTMENT, {
+              day: prog.day, totalScore: prog.totalScore,
+            }));
+          });
+        }
+      }
+    } catch (_) {}
+
     this.input.keyboard.once('keydown-SPACE', () => {
       this.cameras.main.fadeOut(450, 5, 5, 10);
       this.time.delayedCall(470, () => this.scene.start(SCENES.INTRO));

@@ -1,6 +1,6 @@
 {
   "name": "when-the-machine-sings",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A short narrative arcade game about the Taiwanese garbage truck. Gamedev.js Jam 2026 entry.",
   "type": "module",
   "scripts": {

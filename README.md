@@ -27,7 +27,7 @@ A full week is about 5 minutes. The game is bilingual EN / 繁體中文 througho
 ## Why this code may be worth reading
 
 - **The core mechanic is WebAudio.** [src/systems/AudioDistance.js](./src/systems/AudioDistance.js) drives truck proximity as a gain curve. The Für Elise melody *is* the countdown — you play by listening.
-- **One build, three platforms.** [src/systems/Playables.js](./src/systems/Playables.js) is a thin adapter over the YouTube Playables SDK. In the YT container it forwards to `ytgame.game.saveData` / `loadData`, respects `onPause` / `onResume` / `isAudioEnabled`. Outside (itch, Wavedash, localhost) every call degrades to localStorage or a no-op. No scene code branches on host.
+- **One build, three platforms.** [src/systems/Playables.js](./src/systems/Playables.js) is a thin adapter that fans out to whatever platform SDK is on the page. In the YT container it forwards to `ytgame.game.saveData` / `loadData`, respects `onPause` / `onResume` / `isAudioEnabled`, and feeds `engagement.sendScore`. On Wavedash it upserts a `wtms-weekly-best` leaderboard via `WavedashJS.uploadLeaderboardScore`. On itch / localhost it falls through to localStorage. No scene code branches on host.
 - **Narrative > scope.** The repo is deliberately small. One mechanic, one emotion, one ending.
 
 ## Architecture
@@ -65,7 +65,7 @@ src/
 | **Open Source** (GitHub Copilot Pro × 5) | Entering | MIT + public repo + this README |
 | **Build it with Phaser** (Phaser Editor Pro × 10) | Entering | [package.json](./package.json) — `phaser ^3.90.0` |
 | **YouTube Playables** (Gemini Pro × 5, fast-track × 10) | Entering | SDK integrated — see [src/systems/Playables.js](./src/systems/Playables.js) |
-| **Deploy to Wavedash** ($2,500 pool) | Entering | [docs/DEPLOY_WAVEDASH.md](./docs/DEPLOY_WAVEDASH.md), [wavedash.toml](./wavedash.toml) |
+| **Deploy to Wavedash** ($2,500 pool) | Entering | [docs/DEPLOY_WAVEDASH.md](./docs/DEPLOY_WAVEDASH.md), [wavedash.toml](./wavedash.toml), WavedashJS leaderboard wired in [src/systems/Playables.js](./src/systems/Playables.js) |
 | Ethereum ($130) | Skipping | Blockchain integration conflicts with narrative |
 
 ## Development

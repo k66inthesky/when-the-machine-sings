@@ -5,8 +5,10 @@ import path from 'node:path';
 // Phaser loads assets by hardcoded relative paths (e.g. 'assets/images/bg/...').
 // Vite's dev server happens to serve project-root files, but `vite build` does
 // not copy them — so we mirror the whole assets/ tree into dist/ at build end.
-// Only ship runtime media (images/audio). Prompts, Windows NTFS Zone.Identifier
-// streams, and .gitkeep markers are useful in-repo but not in the shipped bundle.
+// Only ship runtime media (images + .mp3/.ogg audio). Raw-format source audio
+// (.wav/.flac), prompts, Windows NTFS Zone.Identifier streams, and .gitkeep
+// markers are useful in-repo but not in the shipped bundle — YT Playables caps
+// the total bundle at 15 MiB and raw-format source audio alone is >50 MB.
 const copyAssetsPlugin = () => ({
   name: 'copy-assets-dir',
   apply: 'build',
@@ -19,7 +21,14 @@ const copyAssetsPlugin = () => ({
         await fs.cp(src, dst, {
           recursive: true,
           force: true,
-          filter: (p) => !p.endsWith(':Zone.Identifier') && !p.endsWith('.gitkeep'),
+          filter: (p) => {
+            if (p.endsWith(':Zone.Identifier')) return false;
+            if (p.endsWith('.gitkeep')) return false;
+            // Only .mp3/.ogg are actually loaded by PreloadScene; strip raw
+            // source-format audio so the shipped bundle stays under caps.
+            if (p.endsWith('.wav') || p.endsWith('.flac')) return false;
+            return true;
+          },
         });
       } catch (err) {
         if (err.code !== 'ENOENT') throw err;

@@ -56,9 +56,11 @@ Today: **2026-04-21** — ~5 days of buffer.
 
 - [ ] `curl -fsSL https://wavedash.com/cli/install.sh | sh` to install CLI
 - [ ] `wavedash auth login` (browser flow)
+- [ ] `wavedash team create --name "k66"` then `wavedash project create --title "When the Machine Sings" --team-id <TEAM_ID>` (skip if already set up in portal)
 - [ ] `wavedash init` in repo root — fills `game_id` into wavedash.toml
-- [ ] `npm run build` → `wavedash build push`
-- [ ] Publish the pushed build via Wavedash Developer Portal
+- [ ] (optional) `wavedash dev` — play one full run and confirm leaderboard upload fires in console on Ending scene
+- [ ] `npm run build` → `wavedash build push -m "jam submission build"`
+- [ ] In the Developer Portal: fill in title / tagline / description (paste itch/description.md) / thumbnail / 5 screenshots / tags, then **Publish** the pushed build
 - [ ] Paste the Wavedash URL into itch description as a secondary play link
 
 ## Post-submit

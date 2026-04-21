@@ -1,12 +1,19 @@
-// YouTube Playables SDK adapter.
+// Cross-host platform adapter (YouTube Playables + Wavedash).
 //
 // In the YT Playables container, `window.ytgame` is injected by the SDK
-// loaded from index.html. Everywhere else (itch.io, Wavedash, local dev)
-// it stays undefined and every method here becomes a graceful no-op.
+// loaded from index.html. On Wavedash, `window.WavedashJS` is injected by
+// the Wavedash dev server / runtime. Everywhere else (itch.io, local dev)
+// both stay undefined and every method here becomes a graceful no-op.
 //
 // This shim lets the same build ship to three platforms without branching
 // scene code — the scenes just call Playables.xxx() and the adapter
-// decides whether to forward to ytgame or fall through.
+// decides whether to forward to ytgame, WavedashJS, or fall through to
+// localStorage.
+//
+// Leaderboard behaviour:
+//   - Playables env → ytgame.engagement.sendScore (YT's aggregate score feed)
+//   - Wavedash env  → WavedashJS.getOrCreateLeaderboard + uploadLeaderboardScore
+//   - anywhere else → local-only via setBest (no global submission)
 //
 // Required by YT Playables certification:
 //   - firstFrameReady() once a loading UI is on screen (PreloadScene)
@@ -19,6 +26,8 @@
 let loadPromise = null;
 let loaded = null; // cached load() result for sync access
 let audioEnabledCache = true;
+let wavedashLeaderboardId = null; // cached after first getOrCreateLeaderboard
+const LEADERBOARD_KEY = 'wtms-weekly-best';
 
 function inPlayables() {
   return typeof window !== 'undefined'
@@ -28,6 +37,10 @@ function inPlayables() {
 
 function available() {
   return typeof window !== 'undefined' && !!window.ytgame;
+}
+
+function wavedashAvailable() {
+  return typeof window !== 'undefined' && !!window.WavedashJS;
 }
 
 export const Playables = {
@@ -155,11 +168,26 @@ export const Playables = {
     catch (_) { return () => {}; }
   },
 
-  // Optional telemetry hook for leaderboards.
+  // Platform-aware score submission.
+  //   - YT Playables: feeds ytgame.engagement.sendScore (used by YT for ranking).
+  //   - Wavedash:     creates/gets a shared leaderboard and uploads keepBest=true.
+  //   - anywhere else: no-op (local best is already stored via setBest).
   async sendScore(value) {
-    if (!available()) return;
-    try { await window.ytgame.engagement.sendScore({ value }); }
-    catch (_) {}
+    if (available()) {
+      try { await window.ytgame.engagement.sendScore({ value }); } catch (_) {}
+    }
+    if (wavedashAvailable()) {
+      try {
+        if (!wavedashLeaderboardId) {
+          // 0 = sort desc (higher is better), 2 = integer format — docs default.
+          const lb = await window.WavedashJS.getOrCreateLeaderboard(LEADERBOARD_KEY, 0, 2);
+          wavedashLeaderboardId = lb && lb.data && lb.data.id;
+        }
+        if (wavedashLeaderboardId) {
+          await window.WavedashJS.uploadLeaderboardScore(wavedashLeaderboardId, value, true);
+        }
+      } catch (_) {}
+    }
   },
 };
 

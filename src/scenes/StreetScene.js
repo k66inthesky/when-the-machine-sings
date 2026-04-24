@@ -156,9 +156,6 @@ export default class StreetScene extends Phaser.Scene {
     // (or any key) is pressed, or 4.5s, whichever comes first. Subsequent days
     // skip it via a session flag.
     this.throwLocked = true;
-    this.showTutorialOverlay();
-
-    // Brief "GO!" beat so the player can orient before the truck moves.
     const goText = this.add.text(w / 2, h / 2 - 20, I18n.t('street.go'), {
       fontFamily: 'serif', fontSize: '48px', color: '#e8b96a', fontStyle: 'bold',
       stroke: '#2a1a10', strokeThickness: 5,

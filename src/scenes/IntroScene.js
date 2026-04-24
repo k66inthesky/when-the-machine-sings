@@ -1,39 +1,15 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Chiptune from '../systems/Chiptune.js';
+import I18n from '../systems/I18n.js';
 
 // Two-slide cultural primer before Day 1. Jam judges from outside Taiwan
 // need the context that the sanitation truck literally plays Für Elise
 // every evening and neighbours chase it on foot. Without this, the gameplay
 // reads as abstract; with it, the whole loop lands.
-const SLIDES = [
-  {
-    en: [
-      'In Taiwan, the garbage trucks sing.',
-      'Every evening, they play "Für Elise" through rooftop speakers',
-      'as they crawl through the alleys.',
-    ],
-    zh: [
-      '在台灣，垃圾車會唱歌。',
-      '每天傍晚，它們一邊在巷子裡慢慢開，',
-      '一邊從車頂喇叭播〈給愛麗絲〉。',
-    ],
-  },
-  {
-    en: [
-      'You have to meet them on the street,',
-      'bag in hand, before the music fades.',
-      '',
-      'Miss it, and your mother will not let you forget.',
-    ],
-    zh: [
-      '你必須拎著垃圾袋在巷口等，',
-      '在音樂消失前把袋子交上去。',
-      '',
-      '錯過了 — 媽媽不會讓你忘記這件事。',
-    ],
-  },
-];
+//
+// Copy now lives in strings.js so the language toggle flips it.
+const SLIDE_KEYS = ['intro.slide1', 'intro.slide2'];
 
 export default class IntroScene extends Phaser.Scene {
   constructor() {
@@ -49,6 +25,11 @@ export default class IntroScene extends Phaser.Scene {
     // *is* the ritual. Slightly softer than title so text reads calmer.
     this.chiptune = new Chiptune(this, { volume: 0.11 });
     this.chiptune.start();
+    // Re-render current slide if language flips mid-intro.
+    this.unsubI18n = I18n.onChange(() => this.showSlide());
+    this.events.once('shutdown', () => {
+      if (this.unsubI18n) this.unsubI18n();
+    });
     this.showSlide();
   }
 
@@ -57,6 +38,7 @@ export default class IntroScene extends Phaser.Scene {
     const h = GAME_HEIGHT;
 
     this.children.removeAll();
+    this.input.keyboard.removeAllListeners();
 
     // Soft painted backdrop — alley for slide 1, apartment hint for slide 2.
     const bgKey = this.slideIndex === 0 ? 'bg-alley-clear' : 'bg-apartment';
@@ -67,29 +49,26 @@ export default class IntroScene extends Phaser.Scene {
       this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
     }
 
-    const slide = SLIDES[this.slideIndex];
-
-    const en = this.add.text(w / 2, h / 2 - 50, slide.en.join('\n'), {
-      fontFamily: 'serif', fontSize: '20px', color: '#e8dccb', align: 'center', lineSpacing: 8,
+    const lines = I18n.tArray(SLIDE_KEYS[this.slideIndex]).join('\n');
+    const body = this.add.text(w / 2, h / 2, lines, {
+      fontFamily: 'serif',
+      fontSize: I18n.lang === 'zh' ? '22px' : '20px',
+      color: '#e8dccb',
+      align: 'center',
+      lineSpacing: 10,
     }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: body, alpha: 1, duration: 700 });
 
-    const zh = this.add.text(w / 2, h / 2 + 60, slide.zh.join('\n'), {
-      fontFamily: 'serif', fontSize: '16px', color: '#aaa9a0', fontStyle: 'italic',
-      align: 'center', lineSpacing: 6,
-    }).setOrigin(0.5).setAlpha(0);
-
-    this.tweens.add({ targets: en, alpha: 1, duration: 700 });
-    this.tweens.add({ targets: zh, alpha: 1, duration: 700, delay: 250 });
-
+    const isLast = this.slideIndex === SLIDE_KEYS.length - 1;
     const prompt = this.add.text(w / 2, h - 36,
-      this.slideIndex === SLIDES.length - 1 ? '[ SPACE — begin Day 1 ]' : '[ SPACE — continue ]', {
+      I18n.t(isLast ? 'intro.begin' : 'intro.continue'), {
         fontFamily: 'sans-serif', fontSize: '14px', color: '#6acfff',
       }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 800, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-SPACE', () => {
       this.slideIndex += 1;
-      if (this.slideIndex >= SLIDES.length) {
+      if (this.slideIndex >= SLIDE_KEYS.length) {
         this.cameras.main.fadeOut(500, 5, 5, 10);
         this.time.delayedCall(520, () => this.scene.start(SCENES.APARTMENT, { day: 1, totalScore: 0 }));
       } else {

@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
-import { getLevel } from '../data/levels.js';
+import { getLevel, getMomOpener } from '../data/levels.js';
 import { randomNag } from '../data/dialogue.js';
 import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
 import Playables from '../systems/Playables.js';
+import I18n from '../systems/I18n.js';
 
 export default class ApartmentScene extends Phaser.Scene {
   constructor() {
@@ -31,7 +32,7 @@ export default class ApartmentScene extends Phaser.Scene {
     this.cameras.main.fadeIn(350, 10, 10, 15);
 
     // Day title card — brief flash before controls come alive.
-    const dayCard = this.add.text(w / 2, h / 2, `Day ${this.level.day}`, {
+    const dayCard = this.add.text(w / 2, h / 2, I18n.t('apt.day_card', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '56px', color: '#e8b96a', fontStyle: 'bold',
       stroke: '#2a1a10', strokeThickness: 4,
     }).setOrigin(0.5).setAlpha(0).setDepth(1000);
@@ -80,37 +81,37 @@ export default class ApartmentScene extends Phaser.Scene {
     }
 
     // HUD — top bar
-    this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} / 5`, {
+    this.dayLabel = this.add.text(w / 2, 20, I18n.t('apt.day_label', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '18px', color: '#e8b96a',
     }).setOrigin(0.5, 0);
 
-    this.slackLabel = this.add.text(20, 20, 'Slack: 0', {
+    this.slackLabel = this.add.text(20, 20, I18n.t('apt.slack_label', { n: 0 }), {
       fontFamily: 'sans-serif', fontSize: '16px', color: '#6acfff',
     });
 
     this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040);
     this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0);
-    this.truckLabel = this.add.text(w - 20, 38, 'Truck: distant', {
+    this.truckLabel = this.add.text(w - 20, 38, I18n.t('apt.truck_label', { status: I18n.t('apt.truck_distant') }), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#e8dccb',
     }).setOrigin(1, 0);
 
     // Opening dialogue
-    this.dialogue = this.add.text(w / 2, 55, this.level.momOpener, {
+    this.dialogue = this.add.text(w / 2, 55, getMomOpener(this.level.day), {
       fontFamily: 'serif', fontSize: '14px', color: '#e8dccb', fontStyle: 'italic',
       align: 'center', wordWrap: { width: w - 80 },
     }).setOrigin(0.5, 0);
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
     // Controls hint — also doubles as tap zones on touch devices.
-    this.hint = this.add.text(w / 2, h - 50, 'E: phone   T: TV   ENTER: go downstairs   ESC: pause   M: mute', {
+    this.hint = this.add.text(w / 2, h - 50, I18n.t('apt.hint'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#aaa',
     }).setOrigin(0.5);
 
     // On-screen buttons — work for mouse + touch; keyboard still works too.
     const buttonDefs = [
-      { label: 'Phone\nE', x: w / 2 - 180, action: () => this.scrollPhone() },
-      { label: 'TV\nT', x: w / 2, action: () => this.toggleTv() },
-      { label: 'Go →\nENTER', x: w / 2 + 180, action: () => this.leaveForTruck() },
+      { label: I18n.t('apt.btn_phone'), x: w / 2 - 180, action: () => this.scrollPhone() },
+      { label: I18n.t('apt.btn_tv'),    x: w / 2,       action: () => this.toggleTv() },
+      { label: I18n.t('apt.btn_go'),    x: w / 2 + 180, action: () => this.leaveForTruck() },
     ];
     buttonDefs.forEach((b) => {
       const bg = this.add.rectangle(b.x, h - 18, 110, 30, 0x1a1a2a, 0.7)
@@ -202,12 +203,12 @@ export default class ApartmentScene extends Phaser.Scene {
 
     // UI
     this.truckBar.width = 198 * proximity;
-    let status = 'distant';
-    if (proximity > 0.95) status = 'ARRIVED — GO NOW';
-    else if (proximity > 0.8) status = 'right outside';
-    else if (proximity > 0.55) status = 'nearby — hurry';
-    else if (proximity > 0.3) status = 'approaching';
-    this.truckLabel.setText(`Truck: ${status}`);
+    let statusKey = 'apt.truck_distant';
+    if (proximity > 0.95) statusKey = 'apt.truck_arrived';
+    else if (proximity > 0.8) statusKey = 'apt.truck_outside';
+    else if (proximity > 0.55) statusKey = 'apt.truck_nearby';
+    else if (proximity > 0.3) statusKey = 'apt.truck_approaching';
+    this.truckLabel.setText(I18n.t('apt.truck_label', { status: I18n.t(statusKey) }));
 
     if (proximity > 0.9) {
       this.truckLabel.setColor('#ff6b8a');
@@ -255,7 +256,7 @@ export default class ApartmentScene extends Phaser.Scene {
   scrollPhone() {
     if (this.left) return;
     this.slackPoints += 2;
-    this.slackLabel.setText(`Slack: ${this.slackPoints}`);
+    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
     Sfx.scroll(this);
     this.tweens.add({
       targets: this.phoneGlow,
@@ -268,7 +269,7 @@ export default class ApartmentScene extends Phaser.Scene {
   toggleTv() {
     if (this.left) return;
     this.slackPoints += 1;
-    this.slackLabel.setText(`Slack: ${this.slackPoints}`);
+    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
     Sfx.static(this);
     this.tweens.add({
       targets: this.tvScreen,

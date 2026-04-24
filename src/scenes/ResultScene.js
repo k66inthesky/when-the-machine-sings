@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getMomLine } from '../data/dialogue.js';
 import { TOTAL_DAYS } from '../data/levels.js';
+import I18n from '../systems/I18n.js';
 
 export default class ResultScene extends Phaser.Scene {
   constructor() {
@@ -25,7 +26,7 @@ export default class ResultScene extends Phaser.Scene {
     this.cameras.main.fadeIn(450, 10, 10, 15);
     this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
 
-    this.add.text(w / 2, 60, `Day ${this.day} — Result`, {
+    this.add.text(w / 2, 60, I18n.t('result.header', { day: this.day }), {
       fontFamily: 'serif', fontSize: '22px', color: '#e8b96a',
     }).setOrigin(0.5);
 
@@ -72,14 +73,14 @@ export default class ResultScene extends Phaser.Scene {
     this.runningTotal = this.priorTotal + dayTotal;
 
     const lines = [
-      `Slack points : ${this.slackPoints} × 5 = ${slackScore}`,
-      `Bags thrown  : ${this.bagsHit} / ${this.bagCount} × 100 = ${bagScore}`,
-      fullClearBonus ? `Full clear bonus : +${fullClearBonus}` : null,
-      missedPenalty ? `Missed the truck : ${missedPenalty}` : null,
-      forcedPenalty ? `Ran out too late : ${forcedPenalty}` : null,
+      I18n.t('result.slack', { n: this.slackPoints, s: slackScore }),
+      I18n.t('result.bags',  { h: this.bagsHit, t: this.bagCount, s: bagScore }),
+      fullClearBonus ? I18n.t('result.full_clear', { s: fullClearBonus }) : null,
+      missedPenalty  ? I18n.t('result.missed',     { s: missedPenalty }) : null,
+      forcedPenalty  ? I18n.t('result.forced',     { s: forcedPenalty }) : null,
       ``,
-      `Day ${this.day} total : ${dayTotal}`,
-      `Week running total : ${this.runningTotal}`,
+      I18n.t('result.day_total',  { d: this.day, s: dayTotal }),
+      I18n.t('result.week_total', { s: this.runningTotal }),
     ].filter(Boolean);
 
     this.add.text(w / 2, h / 2 + 30, lines.join('\n'), {
@@ -87,7 +88,7 @@ export default class ResultScene extends Phaser.Scene {
       align: 'center', lineSpacing: 4,
     }).setOrigin(0.5, 0);
 
-    const nextLabel = this.day >= TOTAL_DAYS ? '[ SPACE — continue to the depot ]' : '[ SPACE — next day ]';
+    const nextLabel = I18n.t(this.day >= TOTAL_DAYS ? 'result.next_depot' : 'result.next_day');
     const prompt = this.add.text(w / 2, h - 40, nextLabel, {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#6acfff',
     }).setOrigin(0.5);

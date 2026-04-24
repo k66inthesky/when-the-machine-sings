@@ -239,26 +239,37 @@ export default class StreetScene extends Phaser.Scene {
   showTutorialOverlay() {
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
-    // Session-scoped: tutorial fires once per browser load, not per day.
+    // Per-level: each day's hint fires the first time the player reaches that
+    // day in this session. D1 covers core controls; D2-D5 layer in the wrinkle
+    // (more bags, rain, distractions, final push).
     const reg = this.registry;
-    if (reg.get('streetTutorialSeen')) {
+    const day = this.level.day;
+    const flag = `streetTutorialD${day}Seen`;
+    if (reg.get(flag)) {
       this.tutorialShown = true;
       return;
     }
-    reg.set('streetTutorialSeen', true);
+    reg.set(flag, true);
     this.tutorialShown = false;
 
+    // D1 also gets the "controls" body; D2+ get a tighter day-specific tip.
+    const titleKey = `street.tut_d${day}_title`;
+    const bodyKey = `street.tut_d${day}_body`;
+    // Body is taller for D1 (3-line controls) than D2-D5 (1-2 line tip).
+    const tall = day === 1;
+    const panelH = tall ? 200 : 140;
+
     const dim = this.add.rectangle(0, 0, w, h, 0x000000, 0.55).setOrigin(0).setDepth(900);
-    const panel = this.add.rectangle(w / 2, h / 2, 520, 200, 0x121026, 0.95)
+    const panel = this.add.rectangle(w / 2, h / 2, 520, panelH, 0x121026, 0.95)
       .setStrokeStyle(2, 0xe8b96a, 0.9).setDepth(901);
-    const title = this.add.text(w / 2, h / 2 - 70, I18n.t('street.tut_title'), {
+    const title = this.add.text(w / 2, h / 2 - panelH / 2 + 30, I18n.t(titleKey), {
       fontFamily: 'serif', fontSize: '24px', color: '#e8b96a', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(902);
-    const body = this.add.text(w / 2, h / 2 + 5, I18n.t('street.tut_body'), {
+    const body = this.add.text(w / 2, h / 2 + (tall ? 5 : -5), I18n.t(bodyKey), {
       fontFamily: 'sans-serif', fontSize: '15px', color: '#e8dccb',
       align: 'center', lineSpacing: 6,
     }).setOrigin(0.5).setDepth(902);
-    const dismiss = this.add.text(w / 2, h / 2 + 75, I18n.t('street.tut_dismiss'), {
+    const dismiss = this.add.text(w / 2, h / 2 + panelH / 2 - 25, I18n.t('street.tut_dismiss'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#6acfff',
     }).setOrigin(0.5).setDepth(902);
     this.tweens.add({ targets: dismiss, alpha: 0.5, duration: 700, yoyo: true, repeat: -1 });
@@ -269,9 +280,12 @@ export default class StreetScene extends Phaser.Scene {
         onComplete: () => [dim, panel, title, body, dismiss].forEach((o) => o.destroy()),
       });
     };
-    this.time.delayedCall(2400, () => this.input.keyboard.once('keydown', dismissAll));
+    // D1 holds longer (more text); D2+ dismiss faster (player already knows controls).
+    const minHold = tall ? 2400 : 1500;
+    const autoHold = tall ? 4500 : 3200;
+    this.time.delayedCall(minHold, () => this.input.keyboard.once('keydown', dismissAll));
     this.input.once('pointerdown', dismissAll);
-    this.time.delayedCall(4500, dismissAll);
+    this.time.delayedCall(autoHold, dismissAll);
   }
 
   throwBag() {

@@ -291,6 +291,7 @@ export default class ApartmentScene extends Phaser.Scene {
       duration: 80,
       yoyo: true,
     });
+    this.showPhoneOverlay();
   }
 
   toggleTv() {
@@ -303,6 +304,271 @@ export default class ApartmentScene extends Phaser.Scene {
       fillColor: { from: 0x3a5050, to: 0xe8b96a },
       duration: 120,
       yoyo: true,
+    });
+    this.showTvOverlay();
+  }
+
+  // Procedural phone screen — vertical mock feed (avatar dots + caption stripes)
+  // that pops up centred so the user can SEE they're doomscrolling, not just
+  // hear a click. Auto-dismisses; rapid-fire taps re-bump it.
+  showPhoneOverlay() {
+    if (this.phoneOverlay && this.phoneOverlay.active) {
+      this.phoneOverlay.bumpSeed = (this.phoneOverlay.bumpSeed || 0) + 1;
+      this.phoneOverlay.refresh();
+      return;
+    }
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const cx = w / 2, cy = h / 2;
+    const pw = 200, ph = 340;
+    const c = this.add.container(cx, cy).setDepth(800);
+    const frame = this.add.rectangle(0, 0, pw, ph, 0x0a0a14).setStrokeStyle(4, 0xe8b96a, 0.95);
+    const screen = this.add.rectangle(0, 6, pw - 22, ph - 60, 0x141828);
+    const notch = this.add.rectangle(0, -ph / 2 + 14, 60, 14, 0x000000);
+    const home = this.add.circle(0, ph / 2 - 18, 6, 0x000000).setStrokeStyle(1, 0xe8b96a, 0.7);
+    const items = [];
+    const refresh = () => {
+      items.forEach((o) => o.destroy());
+      items.length = 0;
+      const baseY = -ph / 2 + 38;
+      for (let i = 0; i < 4; i++) {
+        const y = baseY + i * 64;
+        items.push(this.add.circle(-pw / 2 + 24, y + 10, 8, 0x6acfff, 0.55));
+        items.push(this.add.rectangle(-pw / 2 + 44, y, 90, 4, 0xe8dccb, 0.7).setOrigin(0, 0.5));
+        items.push(this.add.rectangle(-pw / 2 + 44, y + 10, 60, 3, 0x6acfff, 0.45).setOrigin(0, 0.5));
+        items.push(this.add.rectangle(-pw / 2 + 14, y + 26, pw - 28, 18, 0x1f2440, 0.85).setOrigin(0, 0.5));
+        const len = 50 + ((this.phoneOverlay && this.phoneOverlay.bumpSeed || 0) * 7 + i * 11) % 80;
+        items.push(this.add.rectangle(-pw / 2 + 18, y + 26, len, 3, 0xe8b96a, 0.8).setOrigin(0, 0.5));
+        items.push(this.add.rectangle(-pw / 2 + 18, y + 32, len * 0.6, 3, 0xe8dccb, 0.5).setOrigin(0, 0.5));
+      }
+      c.add(items);
+    };
+    c.add([frame, screen, notch, home]);
+    this.phoneOverlay = c;
+    this.phoneOverlay.refresh = refresh;
+    this.phoneOverlay.bumpSeed = 0;
+    refresh();
+    c.setAlpha(0).setScale(0.85);
+    this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 160, ease: 'Quad.easeOut' });
+    this.time.delayedCall(1500, () => {
+      if (!c.active) return;
+      this.tweens.add({
+        targets: c, alpha: 0, scale: 0.9, duration: 220,
+        onComplete: () => { c.destroy(); this.phoneOverlay = null; },
+      });
+    });
+  }
+
+  // Procedural TV overlay — large CRT panel with rolling scanlines + a faux
+  // channel that cycles between news/weather/static so the press has weight.
+  showTvOverlay() {
+    if (this.tvOverlay && this.tvOverlay.active) {
+      this.tvOverlay.cycle();
+      return;
+    }
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const cx = w / 2, cy = h / 2 - 10;
+    const tw = 380, th = 240;
+    const c = this.add.container(cx, cy).setDepth(800);
+    const cabinet = this.add.rectangle(0, 30, tw + 28, th + 70, 0x2a1a18).setStrokeStyle(2, 0x1a0a08);
+    const screen = this.add.rectangle(0, 0, tw, th, 0x141a22).setStrokeStyle(3, 0x0a0a14);
+    const knob1 = this.add.circle(tw / 2 - 14, th / 2 + 22, 6, 0x4a3020).setStrokeStyle(1, 0xe8b96a, 0.6);
+    const knob2 = this.add.circle(tw / 2 - 14, th / 2 + 40, 4, 0x4a3020).setStrokeStyle(1, 0xe8b96a, 0.4);
+    c.add([cabinet, screen, knob1, knob2]);
+    const layer = this.add.container(0, 0);
+    c.add(layer);
+    // Scanlines (always on)
+    for (let i = 0; i < 12; i++) {
+      const ln = this.add.rectangle(0, -th / 2 + 10 + i * 20, tw - 12, 1, 0x6acfff, 0.06);
+      c.add(ln);
+    }
+    let mode = 0;
+    const channels = ['news', 'weather', 'static'];
+    const draw = () => {
+      layer.removeAll(true);
+      const kind = channels[mode % channels.length];
+      if (kind === 'news') {
+        layer.add(this.add.rectangle(0, -th / 2 + 26, tw - 24, 30, 0x9a2030, 0.85));
+        layer.add(this.add.text(0, -th / 2 + 26, I18n.t('apt.tv_news_head'), {
+          fontFamily: 'sans-serif', fontSize: '16px', color: '#fff', fontStyle: 'bold',
+        }).setOrigin(0.5));
+        layer.add(this.add.rectangle(-tw / 2 + 16, 8, 80, 80, 0x3a4a60));
+        layer.add(this.add.rectangle(-tw / 2 + 16 + 12, 8 + 12, 56, 4, 0xe8dccb, 0.7).setOrigin(0));
+        layer.add(this.add.rectangle(-tw / 2 + 16 + 12, 8 + 24, 40, 4, 0x6acfff, 0.6).setOrigin(0));
+        layer.add(this.add.rectangle(0, th / 2 - 22, tw - 12, 22, 0x141828, 0.95));
+        layer.add(this.add.text(0, th / 2 - 22, I18n.t('apt.tv_news_ticker'), {
+          fontFamily: 'sans-serif', fontSize: '12px', color: '#e8b96a',
+        }).setOrigin(0.5));
+      } else if (kind === 'weather') {
+        layer.add(this.add.text(0, -th / 2 + 30, I18n.t('apt.tv_weather_head'), {
+          fontFamily: 'sans-serif', fontSize: '18px', color: '#6acfff', fontStyle: 'bold',
+        }).setOrigin(0.5));
+        layer.add(this.add.circle(-60, 10, 24, 0xe8b96a));
+        layer.add(this.add.text(20, 10, '28°', {
+          fontFamily: 'sans-serif', fontSize: '40px', color: '#fff', fontStyle: 'bold',
+        }).setOrigin(0, 0.5));
+        layer.add(this.add.text(0, th / 2 - 24, I18n.t('apt.tv_weather_sub'), {
+          fontFamily: 'sans-serif', fontSize: '12px', color: '#aac0d0',
+        }).setOrigin(0.5));
+      } else {
+        for (let i = 0; i < 80; i++) {
+          const x = Phaser.Math.Between(-tw / 2 + 8, tw / 2 - 8);
+          const y = Phaser.Math.Between(-th / 2 + 8, th / 2 - 8);
+          const g = Phaser.Math.Between(80, 220);
+          layer.add(this.add.rectangle(x, y, 6, 4, Phaser.Display.Color.GetColor(g, g, g), 0.7));
+        }
+        layer.add(this.add.text(0, 0, 'NO SIGNAL', {
+          fontFamily: 'monospace', fontSize: '20px', color: '#e8b96a', fontStyle: 'bold',
+        }).setOrigin(0.5));
+      }
+    };
+    this.tvOverlay = c;
+    this.tvOverlay.cycle = () => { mode++; draw(); };
+    draw();
+    c.setAlpha(0).setScale(0.9);
+    this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 160, ease: 'Quad.easeOut' });
+    this.time.delayedCall(2000, () => {
+      if (!c.active) return;
+      this.tweens.add({
+        targets: c, alpha: 0, scale: 0.95, duration: 240,
+        onComplete: () => { c.destroy(); this.tvOverlay = null; },
+      });
+    });
+  }
+
+  // Taipei old-公寓 stairwell vignette before the player drops to the street.
+  // Prefers the AI-painted bg-stairwell PNG; falls back to a procedural draw
+  // (concrete walls, mosaic steps, rusty handrail, flickering tube, mailboxes,
+  // scooter shadow) so the moment still lands even if the asset is missing.
+  showStairwellTransition(onDone) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const c = this.add.container(0, 0).setDepth(2000);
+    if (this.textures.exists('bg-stairwell')) {
+      c.add(this.add.image(w / 2, h / 2, 'bg-stairwell').setDisplaySize(w, h));
+      c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.18).setOrigin(0));
+      // Caption + footsteps + fade — same envelope as the procedural path.
+      const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
+        fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(2001);
+      Sfx.step(this);
+      this.time.delayedCall(180, () => Sfx.step(this));
+      this.time.delayedCall(360, () => Sfx.step(this));
+      c.setAlpha(0); cap.setAlpha(0);
+      this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
+      this.time.delayedCall(1100, () => {
+        this.tweens.add({
+          targets: [c, cap], alpha: 0, duration: 260,
+          onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
+        });
+      });
+      return;
+    }
+    // Block out the whole frame
+    c.add(this.add.rectangle(0, 0, w, h, 0x0a0a0e).setOrigin(0));
+    // Walls — gradient-ish bands of concrete grey-green
+    c.add(this.add.rectangle(0, 0, w, h, 0x2a2820).setOrigin(0));
+    c.add(this.add.rectangle(0, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
+    c.add(this.add.rectangle(w * 0.70, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
+    // Wall stains (random ochre/grey patches)
+    for (let i = 0; i < 14; i++) {
+      const px = Phaser.Math.Between(40, w - 40);
+      const py = Phaser.Math.Between(40, h * 0.6);
+      const pw = Phaser.Math.Between(16, 60);
+      const ph = Phaser.Math.Between(8, 30);
+      const tone = [0x3a3025, 0x4a3a28, 0x2a221a][i % 3];
+      c.add(this.add.rectangle(px, py, pw, ph, tone, 0.45));
+    }
+    // Cracks (thin diagonal lines)
+    for (let i = 0; i < 5; i++) {
+      const x1 = Phaser.Math.Between(0, w);
+      const y1 = Phaser.Math.Between(20, h * 0.5);
+      const x2 = x1 + Phaser.Math.Between(-40, 40);
+      const y2 = y1 + Phaser.Math.Between(40, 100);
+      c.add(this.add.line(0, 0, x1, y1, x2, y2, 0x0a0808, 0.6).setOrigin(0).setLineWidth(1));
+    }
+    // Ceiling tube light (flickers)
+    const ceil = this.add.rectangle(w / 2, 28, 200, 14, 0x3a3a30).setStrokeStyle(1, 0x1a1a14);
+    const tube = this.add.rectangle(w / 2, 28, 180, 6, 0xfff4cc, 0.95);
+    c.add(ceil); c.add(tube);
+    this.tweens.add({ targets: tube, alpha: 0.55, duration: 90, yoyo: true, repeat: 8 });
+    // Light cone
+    const cone = this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0);
+    c.add(cone);
+    // Steps descending — mosaic-tile front face + tread, perspective-narrowing
+    // toward a vanishing point at (w/2, h*0.55).
+    const vx = w / 2, vy = h * 0.55;
+    const stepCount = 9;
+    for (let i = 0; i < stepCount; i++) {
+      const t = i / stepCount;
+      const tn = (i + 1) / stepCount;
+      // y on screen
+      const y0 = vy + (h - vy) * Math.pow(t, 1.4);
+      const y1 = vy + (h - vy) * Math.pow(tn, 1.4);
+      // half-width at this depth
+      const hw0 = (w * 0.5 - 60) * Math.pow(tn, 0.85) + 40;
+      const hw1 = (w * 0.5 - 60) * Math.pow(t, 0.85) + 40;
+      // Tread (top face)
+      const tread = this.add.polygon(0, 0, [
+        vx - hw1, y0, vx + hw1, y0,
+        vx + hw0, y1, vx - hw0, y1,
+      ], 0x9a8a70, 0.95).setOrigin(0);
+      tread.setStrokeStyle(1, 0x4a3a28, 0.8);
+      c.add(tread);
+      // Riser front (small dark band just above)
+      const riser = this.add.polygon(0, 0, [
+        vx - hw1, y0 - 6, vx + hw1, y0 - 6,
+        vx + hw1, y0, vx - hw1, y0,
+      ], 0x3a2a22, 0.95).setOrigin(0);
+      c.add(riser);
+      // Mosaic dots on the tread
+      const dots = 8 - i;
+      for (let d = -dots; d <= dots; d++) {
+        const dx = vx + (hw0 * d / (dots + 1));
+        const dy = (y0 + y1) / 2;
+        c.add(this.add.circle(dx, dy, 1.5 + (1 - t) * 1.5, 0x6a5a40, 0.55));
+      }
+    }
+    // Right-side handrail — three vertical posts + a sloped rail
+    for (let i = 0; i < 3; i++) {
+      const t = i / 3;
+      const tn = (i + 0.5) / 3;
+      const x = w / 2 + (w * 0.5 - 60) * Math.pow(tn, 0.85) + 30;
+      const y0 = vy + (h - vy) * Math.pow(tn, 1.4);
+      c.add(this.add.rectangle(x, y0, 4, 50, 0x6a4a30).setOrigin(0.5, 1));
+    }
+    c.add(this.add.line(0, 0, w / 2 + 60, vy + 6, w - 30, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
+    // Mailboxes on left wall — small grid of metal squares
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 2; col++) {
+        const mx = 36 + col * 26;
+        const my = h * 0.30 + row * 36;
+        c.add(this.add.rectangle(mx, my, 22, 30, 0x3a4050).setStrokeStyle(1, 0x6a7080));
+        c.add(this.add.rectangle(mx, my + 8, 12, 1, 0x1a1a1a));
+        c.add(this.add.circle(mx + 6, my - 6, 1.5, 0xe8b96a));
+      }
+    }
+    // Shadowed scooter silhouette bottom-left (just a hint)
+    c.add(this.add.rectangle(70, h - 24, 80, 20, 0x0a0a0e, 0.85));
+    c.add(this.add.circle(50, h - 14, 10, 0x0a0a0e, 0.85));
+    c.add(this.add.circle(110, h - 14, 10, 0x0a0a0e, 0.85));
+    // Caption
+    const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
+      fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(2001);
+    // Footstep echo
+    Sfx.step(this);
+    this.time.delayedCall(180, () => Sfx.step(this));
+    this.time.delayedCall(360, () => Sfx.step(this));
+    // Fade in fast, hold, then fade out + done.
+    c.setAlpha(0);
+    cap.setAlpha(0);
+    this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
+    this.time.delayedCall(1100, () => {
+      this.tweens.add({
+        targets: [c, cap], alpha: 0, duration: 260,
+        onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
+      });
     });
   }
 
@@ -339,16 +605,22 @@ export default class ApartmentScene extends Phaser.Scene {
     this.left = true;
     const proximity = Math.min(1, this.elapsed / this.level.truckArrivalTime);
     this.audio.stop();
-    this.cameras.main.fadeOut(350, 10, 10, 15);
-    this.time.delayedCall(380, () => {
-      this.scene.start(SCENES.STREET, {
-        day: this.level.day,
-        slackPoints: this.slackPoints,
-        proximityAtExit: proximity,
-        forcedExit: forced,
-        totalScore: this.totalScore,
+    // Brief Taipei-stairwell vignette before the street drop. Skipped on a
+    // forced (timed-out) exit so the player isn't punished with extra UI.
+    const goToStreet = () => {
+      this.cameras.main.fadeOut(280, 10, 10, 15);
+      this.time.delayedCall(300, () => {
+        this.scene.start(SCENES.STREET, {
+          day: this.level.day,
+          slackPoints: this.slackPoints,
+          proximityAtExit: proximity,
+          forcedExit: forced,
+          totalScore: this.totalScore,
+        });
       });
-    });
+    };
+    if (forced) { goToStreet(); return; }
+    this.showStairwellTransition(goToStreet);
   }
 
   shutdown() {

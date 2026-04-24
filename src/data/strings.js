@@ -113,6 +113,16 @@ export const STRINGS = {
   'apt.btn_phone': { en: 'Phone\nE',   zh: '手機\nE' },
   'apt.btn_tv':    { en: 'TV\nT',      zh: '電視\nT' },
   'apt.btn_go':    { en: 'Go →\nENTER', zh: '下樓 →\nENTER' },
+  // Phone/TV/stairwell overlay flavor
+  'apt.tv_news_head':    { en: 'BREAKING NEWS', zh: '即時新聞' },
+  'apt.tv_news_ticker':  { en: 'Recycling truck schedule shifts again — full list at 8',
+                           zh: '北市垃圾車路線又調整 — 詳細時刻晚間八點公布' },
+  'apt.tv_weather_head': { en: 'Tonight: muggy', zh: '今晚：悶熱' },
+  'apt.tv_weather_sub':  { en: 'Light shower after midnight', zh: '半夜過後可能短暫陣雨' },
+  'apt.stairwell_caption': {
+    en: 'down five flights — concrete + Für Elise echoing up',
+    zh: '老公寓五樓走下去 — 給愛麗絲從樓下飄上來',
+  },
 
   // ── Street scene ───────────────────────────────────────────────────────────
   'street.day_label': {
@@ -131,13 +141,31 @@ export const STRINGS = {
   'street.go':   { en: 'GO!',    zh: '衝！' },
   'street.hit':  { en: '+HIT',   zh: '+ 命中' },
   'street.miss': { en: 'miss',   zh: '沒中' },
-  'street.tut_title': {
-    en: 'Catch the truck!',
-    zh: '追上垃圾車！',
-  },
-  'street.tut_body': {
+  // D1 — full controls primer; D2-D5 — one-line tip on what changed today.
+  'street.tut_d1_title': { en: 'Catch the truck!', zh: '追上垃圾車！' },
+  'street.tut_d1_body': {
     en: '← / →   move toward the truck\nSPACE   throw a bag when close\nGreen bar = throw NOW',
     zh: '← / →   左右移動追車\nSPACE   靠近時丟出垃圾袋\n綠色條亮起就是出手時機',
+  },
+  'street.tut_d2_title': { en: 'Two bags tonight', zh: '今晚兩包' },
+  'street.tut_d2_body': {
+    en: 'You have to land 2 throws now.\nThe truck doesn\'t wait twice.',
+    zh: '今天要丟中兩袋。\n垃圾車不會等你第二次。',
+  },
+  'street.tut_d3_title': { en: 'Wet roads', zh: '下雨了' },
+  'street.tut_d3_body': {
+    en: 'Rain narrows the throw window.\nAim earlier — the truck slips faster.',
+    zh: '雨夜手感比較滑，丟早一點。\n垃圾車跑起來更快。',
+  },
+  'street.tut_d4_title': { en: 'Night market crowd', zh: '夜市人潮' },
+  'street.tut_d4_body': {
+    en: 'Three bags. People will block your view.\nListen for the music between stalls.',
+    zh: '三包。攤位人潮會擋視線。\n用聽的找垃圾車的位置。',
+  },
+  'street.tut_d5_title': { en: 'Last night', zh: '最後一晚' },
+  'street.tut_d5_body': {
+    en: 'Three bags, fastest truck of the week.\nMom is waiting — make it count.',
+    zh: '三包，這禮拜跑最快的一晚。\n媽媽在等 — 別搞砸了。',
   },
   'street.tut_dismiss': {
     en: 'press any key to start',
@@ -209,30 +237,96 @@ export const STRINGS = {
     en: 'Act II — Taipei, July 2024',
     zh: '第二幕 — 台北，2024 年 7 月',
   },
-  'ending.act2.body': {
+  // The original Act II text card is now broken into 7 vignettes (a–g).
+  // 2a — depot, finds rice cooker, remembers grandma he passes on the route
+  'ending.act2a.body': {
     en: [
-      'A rice cooker was found, intact, in the recycling.',
-      'The cleaner gave it to an elderly scavenger he knew.',
-      'Residual value: NT$32.56 — about one US dollar.',
-      '',
-      '"I just wanted her days to be a little easier."',
-      '— the cleaner, 30 years on the job',
-      '',
-      'December 2025. Court verdict:',
-      'Three months, suspended for two years.',
+      'Sorting at the depot. A rice cooker — still works.',
+      'He thinks of the old scavenger lady he passes every dusk.',
     ],
     zh: [
-      '一台還能用的電鍋，出現在資源回收車上。',
-      '清潔隊員把它送給了一位他認識的拾荒阿嬤。',
-      '殘值：新台幣 32.56 元 — 大約一美元。',
-      '',
-      '「我只是希望她的日子好過一點。」',
-      '— 清潔隊員，在這行做了三十年',
-      '',
-      '2025 年 12 月，判決：',
-      '三個月有期徒刑，緩刑兩年。',
+      '在資源回收場分類。一個電鍋 — 還能用。',
+      '他想起每天傍晚路過的那位拾荒阿嬤。',
     ],
   },
+  // 2b — handover
+  'ending.act2b.title': { en: 'A small kindness', zh: '小小的好意' },
+  'ending.act2b.body': {
+    en: [
+      'He brings it to her. She is overjoyed.',
+      'Residual value: NT$32.56 — about one US dollar.',
+    ],
+    zh: [
+      '他把電鍋拿去給阿婆。阿婆很開心。',
+      '殘值：新台幣 32.56 元 — 大約一美元。',
+    ],
+  },
+  // 2c — sentencing
+  'ending.act2c.title': { en: 'And then', zh: '然後' },
+  'ending.act2c.body': {
+    en: [
+      'Indicted. Convicted of misappropriating recycled goods.',
+      'Three months — over a thirty-two NT$ rice cooker.',
+    ],
+    zh: [
+      '起訴。以侵占回收物判刑定讞。',
+      '三個月 — 為了一個三十二塊錢的電鍋。',
+    ],
+  },
+  // 2d — interview, cleaner cries
+  'ending.act2d.title': { en: 'After the verdict', zh: '判決之後' },
+  'ending.act2d.body': {
+    en: [
+      'On the courthouse steps, the cameras find him.',
+      'Thirty years on the route. He cries.',
+    ],
+    zh: [
+      '在法院門口，記者圍上來。',
+      '在這行三十年。他哭了。',
+    ],
+  },
+  // 2e — netizens rally
+  'ending.act2e.title': { en: 'The internet sees it', zh: '網路看見了' },
+  'ending.act2e.body': {
+    en: [
+      'Comments pour in. Strangers send him support.',
+      'A petition gathers signatures overnight.',
+    ],
+    zh: [
+      '留言湧進。陌生人給他打氣。',
+      '聲援連署一夜之間累積上千。',
+    ],
+  },
+  'ending.netizen_c1': { en: 'You did nothing wrong', zh: '你沒有錯' },
+  'ending.netizen_c2': { en: 'Helping people is not a crime', zh: '幫助別人不是罪' },
+  'ending.netizen_c3': { en: '#StandWithTheCleaner', zh: '#力挺清潔隊員' },
+  'ending.netizen_c4': { en: '32 dollars over a person?', zh: '三十二塊比人重要？' },
+  'ending.netizen_c5': { en: 'Thank you for thirty years', zh: '謝謝你三十年' },
+  // 2f — judges/prosecutors moved, leniency
+  'ending.act2f.title': { en: 'A weighing', zh: '衡量' },
+  'ending.act2f.body': {
+    en: [
+      'Judges and prosecutors are moved by the response.',
+      'The sentence is reduced — three months, suspended two years.',
+    ],
+    zh: [
+      '法官、檢察官也被輿論打動。',
+      '從輕量刑 — 三個月有期徒刑，緩刑兩年。',
+    ],
+  },
+  // 2g — interview again, "still would help"
+  'ending.act2g.title': { en: 'Asked again', zh: '再被問起' },
+  'ending.act2g.body': {
+    en: [
+      'A reporter: "After all this — would you still help others?"',
+      '"…I think I still would."',
+    ],
+    zh: [
+      '記者：「這次事件後，你還願不願意幫助他人？」',
+      '「…還是會吧。」',
+    ],
+  },
+  'ending.stamp_guilty': { en: 'GUILTY', zh: '有罪' },
   'ending.act3.title': {
     en: 'Act III — And Yet',
     zh: '第三幕 — 然而',

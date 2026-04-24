@@ -5,6 +5,7 @@ import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
 import TrashTruck from '../objects/TrashTruck.js';
+import I18n from '../systems/I18n.js';
 
 // Street chase: the truck drives slowly from right to left. Player spawns on the
 // left. Player closes the gap with Right arrow, then presses SPACE to throw the bag.
@@ -85,22 +86,22 @@ export default class StreetScene extends Phaser.Scene {
     this.player.walk();
 
     // HUD
-    this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} — chase`, {
+    this.dayLabel = this.add.text(w / 2, 20, I18n.t('street.day_label', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '16px', color: '#e8b96a',
     }).setOrigin(0.5, 0);
 
-    this.bagsLabel = this.add.text(20, 20, `Bags: 0 / ${this.level.bagCount}`, {
+    this.bagsLabel = this.add.text(20, 20, I18n.t('street.bags_label', { hit: 0, total: this.level.bagCount }), {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#e8dccb',
     });
 
-    this.hint = this.add.text(w / 2, h - 50, '← → move · SPACE throw · ESC pause · M mute', {
+    this.hint = this.add.text(w / 2, h - 50, I18n.t('street.hint'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#999',
     }).setOrigin(0.5);
 
     // Tap buttons — mobile + mouse affordance alongside keyboard.
     const btnDefs = [
       { label: '←', x: w / 2 - 140, action: () => { this.player.x = Math.max(60, this.player.x - 18); } },
-      { label: 'Throw\nSPACE', x: w / 2, action: () => this.throwBag() },
+      { label: I18n.t('street.btn_throw'), x: w / 2, action: () => this.throwBag() },
       { label: '→', x: w / 2 + 140, action: () => { this.player.x = Math.min(w - 60, this.player.x + 24); } },
     ];
     btnDefs.forEach((b) => {
@@ -144,7 +145,7 @@ export default class StreetScene extends Phaser.Scene {
 
     // Brief "GO!" beat so the player can orient before the truck moves.
     this.throwLocked = true;
-    const goText = this.add.text(w / 2, h / 2 - 20, 'GO!', {
+    const goText = this.add.text(w / 2, h / 2 - 20, I18n.t('street.go'), {
       fontFamily: 'serif', fontSize: '48px', color: '#e8b96a', fontStyle: 'bold',
       stroke: '#2a1a10', strokeThickness: 5,
     }).setOrigin(0.5).setAlpha(0).setScale(0.6);
@@ -259,7 +260,7 @@ export default class StreetScene extends Phaser.Scene {
               this.flashMiss();
               this.tweens.add({ targets: bag, alpha: 0, duration: 400, onComplete: () => bag.destroy() });
             }
-            this.bagsLabel.setText(`Bags: ${this.bagsHit} / ${this.level.bagCount}`);
+            this.bagsLabel.setText(I18n.t('street.bags_label', { hit: this.bagsHit, total: this.level.bagCount }));
             this.time.delayedCall(250, () => { this.throwLocked = false; });
 
             if (this.bagsHit >= this.level.bagCount) {
@@ -273,14 +274,14 @@ export default class StreetScene extends Phaser.Scene {
 
   flashHit() {
     this.cameras.main.shake(160, 0.006);
-    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, '+HIT', {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, I18n.t('street.hit'), {
       fontFamily: 'sans-serif', fontSize: '18px', color: '#6affaa', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });
   }
 
   flashMiss() {
-    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, 'miss', {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, I18n.t('street.miss'), {
       fontFamily: 'sans-serif', fontSize: '16px', color: '#ff6b8a',
     }).setOrigin(0.5);
     this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });

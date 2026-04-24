@@ -5,62 +5,26 @@
 // streetSpeed: multiplier for how fast the truck drives away
 // weather / flavor: affects background tint and audio noise
 // notifications: count of LINE notifications that will interrupt the slack phase
+//
+// Mom opener text is NOT stored here any more — scenes pull it from
+// I18n via key `level.day{n}_opener` so it follows the language toggle.
+
+import I18n from '../systems/I18n.js';
 
 export const LEVELS = [
-  {
-    day: 1,
-    truckArrivalTime: 35,
-    bagCount: 1,
-    throwWindow: 2.2,
-    streetSpeed: 1.0,
-    weather: 'clear',
-    notifications: 1,
-    momOpener: "Day 1. Mom: \"Don't miss the truck tonight.\"\n第一天。媽:「今晚垃圾車不要錯過。」",
-  },
-  {
-    day: 2,
-    truckArrivalTime: 32,
-    bagCount: 2,
-    throwWindow: 1.9,
-    streetSpeed: 1.1,
-    weather: 'clear',
-    notifications: 2,
-    momOpener: "Day 2. Mom: \"Two bags. Don't forget the kitchen trash.\"\n第二天。媽:「兩包喔,廚餘不要忘記。」",
-  },
-  {
-    day: 3,
-    truckArrivalTime: 30,
-    bagCount: 2,
-    throwWindow: 1.7,
-    streetSpeed: 1.15,
-    weather: 'rain',
-    notifications: 2,
-    momOpener: "Day 3. It's raining. Mom: \"Take the umbrella. Hurry.\"\n第三天,下雨。媽:「帶把傘,快點去。」",
-  },
-  {
-    day: 4,
-    truckArrivalTime: 28,
-    bagCount: 3,
-    throwWindow: 1.5,
-    streetSpeed: 1.25,
-    weather: 'nightmarket',
-    notifications: 3,
-    momOpener: "Day 4. Mom: \"Night market is loud tonight. Listen carefully.\"\n第四天。媽:「今晚夜市很吵,耳朵放好。」",
-  },
-  {
-    day: 5,
-    truckArrivalTime: 26,
-    bagCount: 3,
-    throwWindow: 1.4,
-    streetSpeed: 1.4,
-    weather: 'clear',
-    notifications: 3,
-    momOpener: "Day 5. Mom: \"One last bag, some old clothes. Please.\"\n第五天。媽:「最後一包,一些舊衣服,拜託你。」",
-  },
+  { day: 1, truckArrivalTime: 35, bagCount: 1, throwWindow: 2.2, streetSpeed: 1.00, weather: 'clear',       notifications: 1 },
+  { day: 2, truckArrivalTime: 32, bagCount: 2, throwWindow: 1.9, streetSpeed: 1.10, weather: 'clear',       notifications: 2 },
+  { day: 3, truckArrivalTime: 30, bagCount: 2, throwWindow: 1.7, streetSpeed: 1.15, weather: 'rain',        notifications: 2 },
+  { day: 4, truckArrivalTime: 28, bagCount: 3, throwWindow: 1.5, streetSpeed: 1.25, weather: 'nightmarket', notifications: 3 },
+  { day: 5, truckArrivalTime: 26, bagCount: 3, throwWindow: 1.4, streetSpeed: 1.40, weather: 'clear',       notifications: 3 },
 ];
 
 export function getLevel(day) {
   return LEVELS.find((l) => l.day === day) || LEVELS[0];
+}
+
+export function getMomOpener(day) {
+  return I18n.t(`level.day${day}_opener`);
 }
 
 export const TOTAL_DAYS = LEVELS.length;

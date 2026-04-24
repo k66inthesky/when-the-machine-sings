@@ -101,4 +101,3 @@ Debug shortcut: `?day=N` (1–5) on any URL skips straight into that day's apart
 MIT — see [LICENSE](./LICENSE). The project uses real news citations under fair use for educational / cultural context; characters are otherwise fictional.
 
 Built solo by [@k66inthesky](https://github.com/k66inthesky).
-獻給所有在傍晚跑過巷子的人。

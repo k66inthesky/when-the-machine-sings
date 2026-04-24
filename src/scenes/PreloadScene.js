@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Playables from '../systems/Playables.js';
+import I18n from '../systems/I18n.js';
 
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -13,7 +14,7 @@ export default class PreloadScene extends Phaser.Scene {
 
     const barBg = this.add.rectangle(w / 2, h / 2, 400, 8, 0x2a1a2a);
     const bar = this.add.rectangle(w / 2 - 200, h / 2, 0, 8, 0xe8b96a).setOrigin(0, 0.5);
-    this.add.text(w / 2, h / 2 - 30, 'Loading...', {
+    this.add.text(w / 2, h / 2 - 30, I18n.t('preload.loading'), {
       fontFamily: 'sans-serif',
       fontSize: '16px',
       color: '#e8dccb',

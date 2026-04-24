@@ -25,10 +25,19 @@ fs.mkdirSync(RAW, { recursive: true });
 // needs to be generous (~70-90). Flood-fill from the edges keeps internal whites safe.
 const JOBS = [
   { rel: 'assets/images/char/player_front_idle.png', tol: 75, trim: true },
-  // Run frame has a busy grey bg with wide JPEG variance; needs higher tolerance.
+  // Run + walk frames share a busy grey bg with wide JPEG variance; needs higher tolerance.
   { rel: 'assets/images/char/player_run_side.png',   tol: 95, trim: true },
+  { rel: 'assets/images/char/player_walk_side_01.png', tol: 95, trim: true },
+  { rel: 'assets/images/char/player_walk_side_02.png', tol: 95, trim: true },
+  { rel: 'assets/images/char/player_walk_side_03.png', tol: 95, trim: true },
+  { rel: 'assets/images/char/player_walk_side_04.png', tol: 95, trim: true },
   { rel: 'assets/images/char/truck_far.png',         tol: 80, trim: true },
   { rel: 'assets/images/char/truck_mid.png',         tol: 90, trim: true },
+  // Mom portraits — flat studio-grey bg around 188-191. Higher tolerance handles
+  // soft hair edges that fade into the bg gradient (a tight tol leaves a halo).
+  { rel: 'assets/images/char/mom_angry.png',     tol: 110, trim: true },
+  { rel: 'assets/images/char/mom_proud.png',     tol: 110, trim: true },
+  { rel: 'assets/images/char/mom_satisfied.png', tol: 110, trim: true },
 ];
 
 function rgbDist(a, b) {

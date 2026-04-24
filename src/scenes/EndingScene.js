@@ -1,56 +1,16 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Playables from '../systems/Playables.js';
+import I18n from '../systems/I18n.js';
 
-const ACTS = [
-  {
-    title: 'Act I — The Machine Goes Home',
-    text: [
-      'After the last stop, you follow the truck.',
-      'The cleaner has been on this route for thirty years.',
-      'He knows which grandma waits where, which bag is heavier than it looks.',
-    ],
-  },
-  {
-    title: 'Act II — Taipei, July 2024',
-    text: [
-      'A rice cooker was found, intact, in the recycling.',
-      'The cleaner gave it to an elderly scavenger he knew.',
-      'Residual value: NT$32.56 — about one US dollar.',
-      '',
-      '"I just wanted her days to be a little easier."',
-      '— the cleaner, 30 years on the job',
-      '',
-      'December 2025. Court verdict:',
-      'Three months, suspended for two years.',
-    ],
-  },
-  {
-    title: 'Act III — And Yet',
-    text: [
-      'Ministry of Justice began drafting amendments.',
-      'The Supreme Prosecutor issued a notice:',
-      '"Weigh the law, the reason, and the heart."',
-      '',
-      'He is still on the route this morning.',
-      'The machine is still singing.',
-      '',
-      'Thank them.',
-    ],
-  },
-  {
-    title: 'Credits',
-    text: [
-      'A game by k66 — Gamedev.js Jam 2026',
-      'Theme: Machines',
-      '',
-      'Music inspired by "Für Elise" — Ludwig van Beethoven',
-      'Narrative drawn from Taiwan case coverage, 2024–2025',
-      '',
-      'Made with Phaser 3, Vite, WebAudio, and a lot of coffee.',
-      '獻給所有在傍晚跑過巷子的人。',
-    ],
-  },
+// Ending acts live in strings.js (one title key + one body array key per act).
+// The language toggle on TitleScene flips these in place — each act re-renders
+// fresh on onChange, so mid-ending language swaps work too.
+const ACT_KEYS = [
+  { title: 'ending.act1.title',    body: 'ending.act1.body' },
+  { title: 'ending.act2.title',    body: 'ending.act2.body' },
+  { title: 'ending.act3.title',    body: 'ending.act3.body' },
+  { title: 'ending.credits.title', body: 'ending.credits.body' },
 ];
 
 export default class EndingScene extends Phaser.Scene {
@@ -72,8 +32,10 @@ export default class EndingScene extends Phaser.Scene {
       this.endingBgm.play();
     }
     this.showAct();
+    this.unsubI18n = I18n.onChange(() => this.showAct());
     this.events.once('shutdown', () => {
       if (this.endingBgm && this.endingBgm.isPlaying) this.endingBgm.stop();
+      if (this.unsubI18n) this.unsubI18n();
     });
   }
 
@@ -82,6 +44,8 @@ export default class EndingScene extends Phaser.Scene {
     const h = GAME_HEIGHT;
 
     this.children.removeAll();
+    this.input.keyboard.removeAllListeners();
+
     if (this.textures.exists('bg-yard-ending')) {
       this.add.image(w / 2, h / 2, 'bg-yard-ending').setDisplaySize(w, h);
       // Heavy darken so text stays legible over the painted scene.
@@ -90,16 +54,16 @@ export default class EndingScene extends Phaser.Scene {
       this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
     }
 
-    const act = ACTS[this.actIndex];
+    const act = ACT_KEYS[this.actIndex];
 
-    this.add.text(w / 2, 60, act.title, {
+    this.add.text(w / 2, 60, I18n.t(act.title), {
       fontFamily: 'serif',
       fontSize: '24px',
       color: '#e8b96a',
       fontStyle: 'italic',
     }).setOrigin(0.5);
 
-    const body = act.text.join('\n');
+    const body = I18n.tArray(act.body).join('\n');
     this.add.text(w / 2, h / 2, body, {
       fontFamily: 'serif',
       fontSize: '17px',
@@ -108,14 +72,14 @@ export default class EndingScene extends Phaser.Scene {
       lineSpacing: 8,
     }).setOrigin(0.5);
 
-    const isLast = this.actIndex === ACTS.length - 1;
+    const isLast = this.actIndex === ACT_KEYS.length - 1;
     if (isLast) {
       const best = this.persistHighScore(this.totalScore);
-      const grade = this.gradeWeek(this.totalScore);
+      const gradeKey = this.gradeKey(this.totalScore);
       const line = best > this.totalScore
-        ? `Your week: ${this.totalScore}   •   Best: ${best}`
-        : `Your week: ${this.totalScore}   •   New best!`;
-      this.add.text(w / 2, h - 90, `${grade[0]}   ·   ${grade[1]}`, {
+        ? I18n.t('ending.score_best',     { s: this.totalScore, b: best })
+        : I18n.t('ending.score_new_best', { s: this.totalScore });
+      this.add.text(w / 2, h - 90, I18n.t(gradeKey), {
         fontFamily: 'serif', fontSize: '14px', color: '#e8b96a', fontStyle: 'italic',
       }).setOrigin(0.5);
       this.add.text(w / 2, h - 72, line, {
@@ -125,7 +89,7 @@ export default class EndingScene extends Phaser.Scene {
     const prompt = this.add.text(
       w / 2,
       h - 40,
-      isLast ? '[ SPACE to return to title ]' : '[ SPACE to continue ]',
+      I18n.t(isLast ? 'ending.prompt_return' : 'ending.prompt_continue'),
       { fontFamily: 'sans-serif', fontSize: '14px', color: '#666' }
     ).setOrigin(0.5);
 
@@ -135,7 +99,7 @@ export default class EndingScene extends Phaser.Scene {
       this.cameras.main.fadeOut(500, 5, 5, 10);
       this.time.delayedCall(520, () => {
         this.actIndex += 1;
-        if (this.actIndex >= ACTS.length) {
+        if (this.actIndex >= ACT_KEYS.length) {
           this.scene.start(SCENES.TITLE);
         } else {
           this.cameras.main.fadeIn(500, 5, 5, 10);
@@ -145,12 +109,12 @@ export default class EndingScene extends Phaser.Scene {
     });
   }
 
-  gradeWeek(total) {
-    if (total >= 900) return ['Perfect week', '滿分的一週'];
-    if (total >= 600) return ['Good kid', '乖孩子'];
-    if (total >= 300) return ['Got by', '勉強過關'];
-    if (total >= 0) return ['The slack one', '廢柴青年'];
-    return ['Disaster week', '慘淡的一週'];
+  gradeKey(total) {
+    if (total >= 900) return 'ending.grade_perfect';
+    if (total >= 600) return 'ending.grade_good';
+    if (total >= 300) return 'ending.grade_by';
+    if (total >= 0)   return 'ending.grade_slack';
+    return 'ending.grade_disaster';
   }
 
   persistHighScore(score) {

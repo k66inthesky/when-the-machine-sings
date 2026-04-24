@@ -5,6 +5,7 @@ import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
 import TrashTruck from '../objects/TrashTruck.js';
+import I18n from '../systems/I18n.js';
 
 // Street chase: the truck drives slowly from right to left. Player spawns on the
 // left. Player closes the gap with Right arrow, then presses SPACE to throw the bag.
@@ -85,22 +86,22 @@ export default class StreetScene extends Phaser.Scene {
     this.player.walk();
 
     // HUD
-    this.dayLabel = this.add.text(w / 2, 20, `Day ${this.level.day} — chase`, {
+    this.dayLabel = this.add.text(w / 2, 20, I18n.t('street.day_label', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '16px', color: '#e8b96a',
     }).setOrigin(0.5, 0);
 
-    this.bagsLabel = this.add.text(20, 20, `Bags: 0 / ${this.level.bagCount}`, {
+    this.bagsLabel = this.add.text(20, 20, I18n.t('street.bags_label', { hit: 0, total: this.level.bagCount }), {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#e8dccb',
     });
 
-    this.hint = this.add.text(w / 2, h - 50, '← → move · SPACE throw · ESC pause · M mute', {
+    this.hint = this.add.text(w / 2, h - 50, I18n.t('street.hint'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#999',
     }).setOrigin(0.5);
 
     // Tap buttons — mobile + mouse affordance alongside keyboard.
     const btnDefs = [
       { label: '←', x: w / 2 - 140, action: () => { this.player.x = Math.max(60, this.player.x - 18); } },
-      { label: 'Throw\nSPACE', x: w / 2, action: () => this.throwBag() },
+      { label: I18n.t('street.btn_throw'), x: w / 2, action: () => this.throwBag() },
       { label: '→', x: w / 2 + 140, action: () => { this.player.x = Math.min(w - 60, this.player.x + 24); } },
     ];
     btnDefs.forEach((b) => {
@@ -142,14 +143,29 @@ export default class StreetScene extends Phaser.Scene {
       this.truckRecording.play();
     }
 
-    // Brief "GO!" beat so the player can orient before the truck moves.
+    // Floating "throw NOW" cue above the player whenever in throw range — fixes
+    // the "I had no idea when to throw" problem from playtesting. Always built;
+    // updateRangeIndicator drives its position + alpha.
+    this.throwCue = this.add.text(0, 0, '', {
+      fontFamily: 'sans-serif', fontSize: '18px', color: '#e8b96a', fontStyle: 'bold',
+      stroke: '#0a0a14', strokeThickness: 3,
+    }).setOrigin(0.5).setAlpha(0).setDepth(800);
+
+    // First-time tutorial overlay — without this most players don't realise
+    // they need to chase the truck and time the throw. Stays up until SPACE
+    // (or any key) is pressed, or 4.5s, whichever comes first. Subsequent days
+    // skip it via a session flag.
     this.throwLocked = true;
-    const goText = this.add.text(w / 2, h / 2 - 20, 'GO!', {
+    this.showTutorialOverlay();
+
+    // Brief "GO!" beat so the player can orient before the truck moves.
+    const goText = this.add.text(w / 2, h / 2 - 20, I18n.t('street.go'), {
       fontFamily: 'serif', fontSize: '48px', color: '#e8b96a', fontStyle: 'bold',
       stroke: '#2a1a10', strokeThickness: 5,
     }).setOrigin(0.5).setAlpha(0).setScale(0.6);
     this.tweens.add({
       targets: goText, alpha: 1, scale: 1.1, duration: 260, ease: 'Back.easeOut',
+      delay: this.tutorialShown ? 0 : 1200,
       onComplete: () => {
         this.tweens.add({
           targets: goText, alpha: 0, duration: 400, delay: 280,
@@ -159,13 +175,15 @@ export default class StreetScene extends Phaser.Scene {
     });
 
     // Truck drives slowly leftward, escape time scales with level.
-    // 900ms delay aligns with the GO! beat so the truck starts when the cue fades.
+    // First-time tutorial freezes the truck for an extra 1.2s so the player has
+    // a chance to read the prompts before the real timer starts.
     const escapeDuration = 7000 / this.level.streetSpeed;
+    const truckDelay = (this.tutorialShown ? 0 : 1200) + 900;
     this.truckTween = this.tweens.add({
       targets: this.truck,
       x: -200,
       duration: escapeDuration,
-      delay: 900,
+      delay: truckDelay,
       ease: 'Linear',
       onStart: () => { this.throwLocked = false; },
       onComplete: () => this.endChase(),
@@ -206,6 +224,54 @@ export default class StreetScene extends Phaser.Scene {
       this.rangeBar.width = 80 * quality;
       this.rangeBar.fillColor = dx < 50 ? 0x6affaa : 0x6acfff;
     }
+    // Floating "SPACE 丟!" cue above the player whenever in throw range — fixes
+    // the "I had no idea when to throw" problem from playtesting.
+    if (this.throwCue) {
+      this.throwCue.setPosition(this.player.x, this.player.y - 80);
+      const targetAlpha = inRange && !this.throwLocked && this.bagsThrown < this.level.bagCount ? 1 : 0;
+      this.throwCue.setAlpha(Phaser.Math.Linear(this.throwCue.alpha, targetAlpha, 0.3));
+      const sweet = inRange && dx < 50;
+      this.throwCue.setColor(sweet ? '#6affaa' : '#e8b96a');
+      this.throwCue.setText(sweet ? I18n.t('street.cue_now') : I18n.t('street.cue_close'));
+    }
+  }
+
+  showTutorialOverlay() {
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    // Session-scoped: tutorial fires once per browser load, not per day.
+    const reg = this.registry;
+    if (reg.get('streetTutorialSeen')) {
+      this.tutorialShown = true;
+      return;
+    }
+    reg.set('streetTutorialSeen', true);
+    this.tutorialShown = false;
+
+    const dim = this.add.rectangle(0, 0, w, h, 0x000000, 0.55).setOrigin(0).setDepth(900);
+    const panel = this.add.rectangle(w / 2, h / 2, 520, 200, 0x121026, 0.95)
+      .setStrokeStyle(2, 0xe8b96a, 0.9).setDepth(901);
+    const title = this.add.text(w / 2, h / 2 - 70, I18n.t('street.tut_title'), {
+      fontFamily: 'serif', fontSize: '24px', color: '#e8b96a', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(902);
+    const body = this.add.text(w / 2, h / 2 + 5, I18n.t('street.tut_body'), {
+      fontFamily: 'sans-serif', fontSize: '15px', color: '#e8dccb',
+      align: 'center', lineSpacing: 6,
+    }).setOrigin(0.5).setDepth(902);
+    const dismiss = this.add.text(w / 2, h / 2 + 75, I18n.t('street.tut_dismiss'), {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#6acfff',
+    }).setOrigin(0.5).setDepth(902);
+    this.tweens.add({ targets: dismiss, alpha: 0.5, duration: 700, yoyo: true, repeat: -1 });
+
+    const dismissAll = () => {
+      this.tweens.add({
+        targets: [dim, panel, title, body, dismiss], alpha: 0, duration: 240,
+        onComplete: () => [dim, panel, title, body, dismiss].forEach((o) => o.destroy()),
+      });
+    };
+    this.time.delayedCall(2400, () => this.input.keyboard.once('keydown', dismissAll));
+    this.input.once('pointerdown', dismissAll);
+    this.time.delayedCall(4500, dismissAll);
   }
 
   throwBag() {
@@ -259,7 +325,7 @@ export default class StreetScene extends Phaser.Scene {
               this.flashMiss();
               this.tweens.add({ targets: bag, alpha: 0, duration: 400, onComplete: () => bag.destroy() });
             }
-            this.bagsLabel.setText(`Bags: ${this.bagsHit} / ${this.level.bagCount}`);
+            this.bagsLabel.setText(I18n.t('street.bags_label', { hit: this.bagsHit, total: this.level.bagCount }));
             this.time.delayedCall(250, () => { this.throwLocked = false; });
 
             if (this.bagsHit >= this.level.bagCount) {
@@ -273,14 +339,14 @@ export default class StreetScene extends Phaser.Scene {
 
   flashHit() {
     this.cameras.main.shake(160, 0.006);
-    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, '+HIT', {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, I18n.t('street.hit'), {
       fontFamily: 'sans-serif', fontSize: '18px', color: '#6affaa', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });
   }
 
   flashMiss() {
-    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, 'miss', {
+    const f = this.add.text(this.truck.x - 20, this.truck.y - 60, I18n.t('street.miss'), {
       fontFamily: 'sans-serif', fontSize: '16px', color: '#ff6b8a',
     }).setOrigin(0.5);
     this.tweens.add({ targets: f, y: f.y - 30, alpha: 0, duration: 700, onComplete: () => f.destroy() });

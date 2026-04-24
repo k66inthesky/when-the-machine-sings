@@ -10,6 +10,7 @@ import EndingScene from './scenes/EndingScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import IntroScene from './scenes/IntroScene.js';
 import Playables from './systems/Playables.js';
+import I18n from './systems/I18n.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -48,6 +49,13 @@ const config = {
 // BootScene also awaits Playables.init() defensively in case a future
 // refactor races ahead of this top-level kickoff.
 Playables.init();
+
+// I18n — init synchronously from localStorage / navigator.language so the
+// very first frame (PreloadScene) already shows the correct language.
+// Eventually this can read loaded.lang from the Playables save blob, but
+// that's async; the localStorage + navigator.language path covers the
+// common case and matches what TitleScene's toggle persists.
+I18n.init();
 
 const game = new Phaser.Game(config);
 if (import.meta.env?.DEV) {
@@ -135,7 +143,7 @@ window.addEventListener('keydown', (e) => {
     else if (!muted && ctx.state === 'suspended') ctx.resume();
   }
   const flash = document.createElement('div');
-  flash.textContent = muted ? '♪ muted' : '♪ on';
+  flash.textContent = I18n.t(muted ? 'hud.muted' : 'hud.on');
   flash.style.cssText = 'position:fixed;top:12px;left:12px;padding:4px 10px;background:rgba(10,10,15,0.85);color:#6acfff;font:13px sans-serif;border:1px solid #6acfff;border-radius:3px;z-index:9999;pointer-events:none;';
   document.body.appendChild(flash);
   setTimeout(() => flash.remove(), 900);

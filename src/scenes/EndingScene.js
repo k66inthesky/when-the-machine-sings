@@ -48,7 +48,6 @@ export default class EndingScene extends Phaser.Scene {
 
     if (this.textures.exists('bg-yard-ending')) {
       this.add.image(w / 2, h / 2, 'bg-yard-ending').setDisplaySize(w, h);
-      // Heavy darken so text stays legible over the painted scene.
       this.add.rectangle(0, 0, w, h, 0x0a0a0f, 0.55).setOrigin(0);
     } else {
       this.add.rectangle(0, 0, w, h, 0x0a0a0f).setOrigin(0);
@@ -58,7 +57,7 @@ export default class EndingScene extends Phaser.Scene {
 
     this.add.text(w / 2, 60, I18n.t(act.title), {
       fontFamily: 'serif',
-      fontSize: '24px',
+      fontSize: isVignette ? 20 : 24,
       color: '#e8b96a',
       fontStyle: 'italic',
     }).setOrigin(0.5);

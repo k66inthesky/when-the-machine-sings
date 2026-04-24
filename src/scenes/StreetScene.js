@@ -143,7 +143,18 @@ export default class StreetScene extends Phaser.Scene {
       this.truckRecording.play();
     }
 
-    // Brief "GO!" beat so the player can orient before the truck moves.
+    // Floating "throw NOW" cue above the player whenever in throw range — fixes
+    // the "I had no idea when to throw" problem from playtesting. Always built;
+    // updateRangeIndicator drives its position + alpha.
+    this.throwCue = this.add.text(0, 0, '', {
+      fontFamily: 'sans-serif', fontSize: '18px', color: '#e8b96a', fontStyle: 'bold',
+      stroke: '#0a0a14', strokeThickness: 3,
+    }).setOrigin(0.5).setAlpha(0).setDepth(800);
+
+    // First-time tutorial overlay — without this most players don't realise
+    // they need to chase the truck and time the throw. Stays up until SPACE
+    // (or any key) is pressed, or 4.5s, whichever comes first. Subsequent days
+    // skip it via a session flag.
     this.throwLocked = true;
     const goText = this.add.text(w / 2, h / 2 - 20, I18n.t('street.go'), {
       fontFamily: 'serif', fontSize: '48px', color: '#e8b96a', fontStyle: 'bold',
@@ -151,6 +162,7 @@ export default class StreetScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0).setScale(0.6);
     this.tweens.add({
       targets: goText, alpha: 1, scale: 1.1, duration: 260, ease: 'Back.easeOut',
+      delay: this.tutorialShown ? 0 : 1200,
       onComplete: () => {
         this.tweens.add({
           targets: goText, alpha: 0, duration: 400, delay: 280,
@@ -160,13 +172,15 @@ export default class StreetScene extends Phaser.Scene {
     });
 
     // Truck drives slowly leftward, escape time scales with level.
-    // 900ms delay aligns with the GO! beat so the truck starts when the cue fades.
+    // First-time tutorial freezes the truck for an extra 1.2s so the player has
+    // a chance to read the prompts before the real timer starts.
     const escapeDuration = 7000 / this.level.streetSpeed;
+    const truckDelay = (this.tutorialShown ? 0 : 1200) + 900;
     this.truckTween = this.tweens.add({
       targets: this.truck,
       x: -200,
       duration: escapeDuration,
-      delay: 900,
+      delay: truckDelay,
       ease: 'Linear',
       onStart: () => { this.throwLocked = false; },
       onComplete: () => this.endChase(),
@@ -207,6 +221,68 @@ export default class StreetScene extends Phaser.Scene {
       this.rangeBar.width = 80 * quality;
       this.rangeBar.fillColor = dx < 50 ? 0x6affaa : 0x6acfff;
     }
+    // Floating "SPACE 丟!" cue above the player whenever in throw range — fixes
+    // the "I had no idea when to throw" problem from playtesting.
+    if (this.throwCue) {
+      this.throwCue.setPosition(this.player.x, this.player.y - 80);
+      const targetAlpha = inRange && !this.throwLocked && this.bagsThrown < this.level.bagCount ? 1 : 0;
+      this.throwCue.setAlpha(Phaser.Math.Linear(this.throwCue.alpha, targetAlpha, 0.3));
+      const sweet = inRange && dx < 50;
+      this.throwCue.setColor(sweet ? '#6affaa' : '#e8b96a');
+      this.throwCue.setText(sweet ? I18n.t('street.cue_now') : I18n.t('street.cue_close'));
+    }
+  }
+
+  showTutorialOverlay() {
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    // Per-level: each day's hint fires the first time the player reaches that
+    // day in this session. D1 covers core controls; D2-D5 layer in the wrinkle
+    // (more bags, rain, distractions, final push).
+    const reg = this.registry;
+    const day = this.level.day;
+    const flag = `streetTutorialD${day}Seen`;
+    if (reg.get(flag)) {
+      this.tutorialShown = true;
+      return;
+    }
+    reg.set(flag, true);
+    this.tutorialShown = false;
+
+    // D1 also gets the "controls" body; D2+ get a tighter day-specific tip.
+    const titleKey = `street.tut_d${day}_title`;
+    const bodyKey = `street.tut_d${day}_body`;
+    // Body is taller for D1 (3-line controls) than D2-D5 (1-2 line tip).
+    const tall = day === 1;
+    const panelH = tall ? 200 : 140;
+
+    const dim = this.add.rectangle(0, 0, w, h, 0x000000, 0.55).setOrigin(0).setDepth(900);
+    const panel = this.add.rectangle(w / 2, h / 2, 520, panelH, 0x121026, 0.95)
+      .setStrokeStyle(2, 0xe8b96a, 0.9).setDepth(901);
+    const title = this.add.text(w / 2, h / 2 - panelH / 2 + 30, I18n.t(titleKey), {
+      fontFamily: 'serif', fontSize: '24px', color: '#e8b96a', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(902);
+    const body = this.add.text(w / 2, h / 2 + (tall ? 5 : -5), I18n.t(bodyKey), {
+      fontFamily: 'sans-serif', fontSize: '15px', color: '#e8dccb',
+      align: 'center', lineSpacing: 6,
+    }).setOrigin(0.5).setDepth(902);
+    const dismiss = this.add.text(w / 2, h / 2 + panelH / 2 - 25, I18n.t('street.tut_dismiss'), {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#6acfff',
+    }).setOrigin(0.5).setDepth(902);
+    this.tweens.add({ targets: dismiss, alpha: 0.5, duration: 700, yoyo: true, repeat: -1 });
+
+    const dismissAll = () => {
+      this.tweens.add({
+        targets: [dim, panel, title, body, dismiss], alpha: 0, duration: 240,
+        onComplete: () => [dim, panel, title, body, dismiss].forEach((o) => o.destroy()),
+      });
+    };
+    // D1 holds longer (more text); D2+ dismiss faster (player already knows controls).
+    const minHold = tall ? 2400 : 1500;
+    const autoHold = tall ? 4500 : 3200;
+    this.time.delayedCall(minHold, () => this.input.keyboard.once('keydown', dismissAll));
+    this.input.once('pointerdown', dismissAll);
+    this.time.delayedCall(autoHold, dismissAll);
   }
 
   throwBag() {

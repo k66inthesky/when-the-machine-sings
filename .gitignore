@@ -15,3 +15,9 @@ wtms-submission.zip
 
 # AI-generated assets work files (keep only final)
 assets/prompts/_scratch/
+
+# Local-only raw asset backups (originals before scripts/strip-bg + compress-music)
+assets/raw/
+
+# Visual debugging output (stripped PNGs over a checker for halo inspection)
+scripts/preview-out/

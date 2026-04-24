@@ -35,10 +35,6 @@ function inPlayables() {
     && window.ytgame.IN_PLAYABLES_ENV === true;
 }
 
-function available() {
-  return typeof window !== 'undefined' && !!window.ytgame;
-}
-
 function wavedashAvailable() {
   return typeof window !== 'undefined' && !!window.WavedashJS;
 }
@@ -133,37 +129,44 @@ export const Playables = {
   },
 
   // Lifecycle hooks. No-op outside Playables.
+  //
+  // IMPORTANT: gate on inPlayables() not available(). The YT SDK script in
+  // index.html loads window.ytgame on every host (localhost, itch, Wavedash),
+  // but outside the real Playables container ytgame.system.isAudioEnabled()
+  // returns falsy — which would silence our chiptune everywhere except YT.
+  // Only the certification-required notifications (firstFrameReady/gameReady)
+  // are safe to fire whenever ytgame exists, because they're one-shot pings.
   firstFrameReady() {
-    if (!available()) return;
+    if (!inPlayables()) return;
     try { window.ytgame.game.firstFrameReady(); } catch (_) {}
   },
   gameReady() {
-    if (!available()) return;
+    if (!inPlayables()) return;
     try { window.ytgame.game.gameReady(); } catch (_) {}
   },
 
   // Returns true when audio should play. In non-Playables env, always true
   // (we have our own M-key mute for that case).
   isAudioEnabled() {
-    if (!available()) return true;
+    if (!inPlayables()) return true;
     try { return window.ytgame.system.isAudioEnabled(); }
     catch (_) { return true; }
   },
 
   // Subscribe to YT's audio toggle. Returns unsubscribe or a no-op.
   onAudioEnabledChange(cb) {
-    if (!available()) return () => {};
+    if (!inPlayables()) return () => {};
     try { return window.ytgame.system.onAudioEnabledChange(cb) || (() => {}); }
     catch (_) { return () => {}; }
   },
 
   onPause(cb) {
-    if (!available()) return () => {};
+    if (!inPlayables()) return () => {};
     try { return window.ytgame.system.onPause(cb) || (() => {}); }
     catch (_) { return () => {}; }
   },
   onResume(cb) {
-    if (!available()) return () => {};
+    if (!inPlayables()) return () => {};
     try { return window.ytgame.system.onResume(cb) || (() => {}); }
     catch (_) { return () => {}; }
   },
@@ -173,7 +176,7 @@ export const Playables = {
   //   - Wavedash:     creates/gets a shared leaderboard and uploads keepBest=true.
   //   - anywhere else: no-op (local best is already stored via setBest).
   async sendScore(value) {
-    if (available()) {
+    if (inPlayables()) {
       try { await window.ytgame.engagement.sendScore({ value }); } catch (_) {}
     }
     if (wavedashAvailable()) {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Playables from '../systems/Playables.js';
+import Chiptune from '../systems/Chiptune.js';
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
@@ -25,6 +26,12 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     this.cameras.main.fadeIn(500, 5, 5, 10);
+
+    // 8-bit Für Elise on the title — the melody *is* the game. Starts on
+    // first-gesture unlock (main.js handles that); the Chiptune helper's
+    // master gain keys off the same AudioContext so mute/pause free.
+    this.chiptune = new Chiptune(this, { volume: 0.14 });
+    this.chiptune.start();
 
     // Painted night-market alley as title backdrop — carries the mood.
     if (this.textures.exists('bg-alley-night-market')) {

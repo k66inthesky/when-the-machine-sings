@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import Chiptune from '../systems/Chiptune.js';
 
 // Two-slide cultural primer before Day 1. Jam judges from outside Taiwan
 // need the context that the sanitation truck literally plays Für Elise
@@ -43,6 +44,11 @@ export default class IntroScene extends Phaser.Scene {
     this.slideIndex = 0;
     this.cameras.main.fadeIn(600, 5, 5, 10);
     this.bg = null;
+    // Keep the title's Für Elise going across the primer — the motif
+    // carrying through the cultural context reinforces that the melody
+    // *is* the ritual. Slightly softer than title so text reads calmer.
+    this.chiptune = new Chiptune(this, { volume: 0.11 });
+    this.chiptune.start();
     this.showSlide();
   }
 

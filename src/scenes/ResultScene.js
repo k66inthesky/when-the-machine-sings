@@ -54,10 +54,33 @@ export default class ResultScene extends Phaser.Scene {
       }
     }
 
-    // Play recorded mom voice if loaded; otherwise silence — the on-screen line reads.
-    // Track the sound instance so SPACE can interrupt it instead of letting
-    // the clip drag past the player's patience (esp. day-5 missed line).
-    const voiceKey = `mom-d${this.day}-${outcome}`;
+    // Play the recorded mom voice. Picks the voice keyed to current I18n.lang
+    // (so EN players hear EN mom and ZH players hear ZH mom) and falls back
+    // to the other language if a specific clip is missing. When an encounter
+    // override is active, play the encounter clip instead of the standard
+    // per-day clip so the voice tracks the on-screen line.
+    const lang = (I18n.lang === 'en') ? 'en' : 'zh';
+    const altLang = lang === 'en' ? 'zh' : 'en';
+    let voiceKey = null;
+    if (encKind && encEngaged) {
+      // Map encounter kind to the voice file's key.
+      const encKey = encKind === 'zhang' ? 'zhang_scold'
+        : encKind === 'huang' ? 'huang_proud'
+        : encKind === 'chen'  ? 'chen_miss'
+        : null;
+      if (encKey) {
+        voiceKey = `mom-enc-${encKey}-${lang}`;
+        if (!this.cache.audio.exists(voiceKey)) {
+          voiceKey = `mom-enc-${encKey}-${altLang}`;
+        }
+      }
+    }
+    if (!voiceKey || !this.cache.audio.exists(voiceKey)) {
+      voiceKey = `mom-d${this.day}-${outcome}-${lang}`;
+      if (!this.cache.audio.exists(voiceKey)) {
+        voiceKey = `mom-d${this.day}-${outcome}-${altLang}`;
+      }
+    }
     this.momVoice = null;
     if (this.cache.audio.exists(voiceKey)) {
       this.momVoice = this.sound.add(voiceKey, { volume: 0.9 });

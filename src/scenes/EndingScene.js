@@ -19,7 +19,7 @@ const ACT_KEYS = [
   { kind: 'vignette', title: 'ending.act2e.title',     body: 'ending.act2e.body', vignette: 'netizens' },
   { kind: 'vignette', title: 'ending.act2f.title',     body: 'ending.act2f.body', vignette: 'leniency' },
   { kind: 'vignette', title: 'ending.act2g.title',     body: 'ending.act2g.body', vignette: 'interview_still' },
-  { kind: 'text',     title: 'ending.act3.title',      body: 'ending.act3.body' },
+  { kind: 'vignette', title: 'ending.act3.title',      body: 'ending.act3.body',  vignette: 'sun_after_rain' },
   { kind: 'text',     title: 'ending.credits.title',   body: 'ending.credits.body' },
 ];
 
@@ -208,6 +208,7 @@ export default class EndingScene extends Phaser.Scene {
     if (id === 'netizens')      return this.vignetteNetizens(cx, cy);
     if (id === 'leniency')      return this.vignetteLeniency(cx, cy);
     if (id === 'interview_still') return this.vignetteInterview(cx, cy, false);
+    if (id === 'sun_after_rain')  return this.vignetteSunAfterRain(cx, cy);
   }
 
   // Reusable: draws a small standing person silhouette centred on (x, y).
@@ -439,6 +440,87 @@ export default class EndingScene extends Phaser.Scene {
     this.add.text(bx - 32, by - 14, '法', { fontFamily: 'serif', fontSize: '10px', color: '#e8dccb' }).setOrigin(0.5);
     // Right pan: heart (情) — heavier, dipped lower
     this.drawHeart(bx + 36, by - 6, 7, 0xff6b8a);
+  }
+
+  // Act III backdrop: clearing sky with the truck driving past underneath.
+  // After the storm of the case → the route still rolls. Soft gradient sky
+  // bands, faint rainbow arc, fluffy clouds, sun rays piercing through, then
+  // a small Taipei-orange truck silhouette tracking left-to-right along the
+  // road below. No text — the act3 body lines render as caption.
+  vignetteSunAfterRain(cx, cy) {
+    const w = GAME_WIDTH;
+    // Sky gradient — three bands top to bottom (deep blue → cyan → cream).
+    this.add.rectangle(0, cy - 130, w, 60, 0x4a6da0).setOrigin(0);
+    this.add.rectangle(0, cy - 70,  w, 60, 0x8ab8d8).setOrigin(0);
+    this.add.rectangle(0, cy - 10,  w, 60, 0xf2d9b0).setOrigin(0);
+
+    // Sun — warm disk with a soft halo, low and right of centre.
+    const sunX = cx + 110;
+    const sunY = cy - 50;
+    this.add.circle(sunX, sunY, 38, 0xffe8a0, 0.18);
+    this.add.circle(sunX, sunY, 26, 0xffe8a0, 0.32);
+    this.add.circle(sunX, sunY, 18, 0xfff4cc, 0.95);
+    // Sun rays — eight thin lines radiating
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const r1 = 22, r2 = 36;
+      this.add.line(0, 0,
+        sunX + Math.cos(a) * r1, sunY + Math.sin(a) * r1,
+        sunX + Math.cos(a) * r2, sunY + Math.sin(a) * r2,
+        0xfff4cc, 0.6).setOrigin(0).setLineWidth(1.5);
+    }
+
+    // Rainbow arc — six concentric thin arcs, low arc anchored centre-bottom.
+    const rbX = cx - 60, rbY = cy + 80;
+    const rbColors = [0xff6b6b, 0xff9a4a, 0xf2d24a, 0x6affaa, 0x6acfff, 0xa06aff];
+    for (let i = 0; i < rbColors.length; i++) {
+      const r = 200 - i * 4;
+      this.add.arc(rbX, rbY, r, 200, 340, false, rbColors[i], 0.45).setStrokeStyle(2, rbColors[i], 0.6);
+    }
+
+    // A few fluffy clouds drifting at different depths.
+    const cloud = (x, y, scale, alpha) => {
+      this.add.ellipse(x, y, 60 * scale, 22 * scale, 0xffffff, alpha);
+      this.add.ellipse(x - 16 * scale, y + 4 * scale, 36 * scale, 18 * scale, 0xffffff, alpha);
+      this.add.ellipse(x + 18 * scale, y + 4 * scale, 40 * scale, 18 * scale, 0xffffff, alpha);
+    };
+    cloud(cx - 180, cy - 100, 0.9, 0.85);
+    cloud(cx + 30,  cy - 110, 1.1, 0.78);
+    cloud(cx - 60,  cy - 130, 0.7, 0.82);
+
+    // Wet street — dark band with a thin highlight reflection of the sky.
+    this.add.rectangle(0, cy + 50, w, 100, 0x1a1a22).setOrigin(0);
+    this.add.rectangle(0, cy + 50, w, 6, 0xc8d8e8, 0.55).setOrigin(0); // wet sheen
+    // Lane dashes
+    for (let i = 0; i < 8; i++) {
+      this.add.rectangle(60 + i * 110, cy + 90, 40, 4, 0xe8b96a, 0.5).setOrigin(0, 0.5);
+    }
+
+    // The truck — Taipei-orange box on wheels driving rightward. Anchored
+    // about cx-60 so the ending caption below has clean negative space.
+    const tx = cx - 40, ty = cy + 70;
+    // Cab
+    this.add.rectangle(tx + 56, ty - 6,  36, 26, 0xe8a040).setStrokeStyle(1, 0x4a3010);
+    // Cargo box
+    this.add.rectangle(tx, ty, 100, 38, 0xe8a040).setStrokeStyle(1, 0x4a3010);
+    // White stripe along middle (Taipei livery)
+    this.add.rectangle(tx, ty - 2, 100, 4, 0xfdfcf2);
+    // Cab window
+    this.add.rectangle(tx + 60, ty - 12, 22, 12, 0x9ac0d8);
+    // Wheels
+    this.add.circle(tx - 30, ty + 22, 8, 0x141014);
+    this.add.circle(tx + 22, ty + 22, 8, 0x141014);
+    this.add.circle(tx + 66, ty + 22, 8, 0x141014);
+    this.add.circle(tx - 30, ty + 22, 4, 0x6a6a6a);
+    this.add.circle(tx + 22, ty + 22, 4, 0x6a6a6a);
+    this.add.circle(tx + 66, ty + 22, 4, 0x6a6a6a);
+    // ♪ note above the cab — the machine is still singing
+    this.add.text(tx + 56, ty - 30, '♪', {
+      fontFamily: 'serif', fontSize: '20px', color: '#fff4cc', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.add.text(tx + 76, ty - 38, '♪', {
+      fontFamily: 'serif', fontSize: '14px', color: '#fff4cc', fontStyle: 'bold',
+    }).setOrigin(0.5);
   }
 
   // ── Existing methods continue below ───────────────────────────────────────

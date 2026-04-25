@@ -307,11 +307,11 @@ export const STRINGS = {
   'ending.act2b.body': {
     en: [
       'He brings it to her. She is overjoyed.',
-      'Residual value: NT$32.56 — about one US dollar.',
+      'Residual value: NT$32.56 — about 1 US dollar.',
     ],
     zh: [
       '他把電鍋拿去給阿婆。阿婆很開心。',
-      '殘值：新台幣 32.56 元 — 大約一美元。',
+      '殘值：新台幣 32.56 元 — 大約 1 美元。',
     ],
   },
   // 2c — sentencing
@@ -319,27 +319,27 @@ export const STRINGS = {
   'ending.act2c.body': {
     en: [
       'Indicted. Convicted of misappropriating recycled goods.',
-      'Three months — over a thirty-two NT$ rice cooker.',
+      '3 months — over a NT$32 rice cooker.',
     ],
     zh: [
       '起訴。以侵占回收物判刑定讞。',
-      '三個月 — 為了一個三十二塊錢的電鍋。',
+      '3 個月 — 為了一個 32 元新台幣的電鍋。',
     ],
   },
   // 2d — interview, cleaner cries
   'ending.act2d.title': { en: 'After the verdict', zh: '判決之後' },
   'ending.act2d.body': {
     en: [
-      'On the courthouse steps, the cameras find him.',
-      'Thirty years on the route. He cries.',
+      'A reporter asks Mr. Huang how he feels right now.',
+      '30 years on the sanitation route. He cries.',
     ],
     zh: [
-      '在法院門口，記者圍上來。',
-      '在這行三十年。他哭了。',
+      '記者問黃姓清潔隊員，你現在的心情怎麼樣？',
+      '從事清潔隊員 30 年的他，哭了。',
     ],
   },
   // 2e — netizens rally
-  'ending.act2e.title': { en: 'The internet sees it', zh: '網路看見了' },
+  'ending.act2e.title': { en: 'The news breaks. The internet boils.', zh: '經新聞報導、網路發酵' },
   'ending.act2e.body': {
     en: [
       'Comments pour in. Strangers send him support.',
@@ -350,21 +350,21 @@ export const STRINGS = {
       '聲援連署一夜之間累積上千。',
     ],
   },
-  'ending.netizen_c1': { en: 'You did nothing wrong', zh: '你沒有錯' },
-  'ending.netizen_c2': { en: 'Helping people is not a crime', zh: '幫助別人不是罪' },
-  'ending.netizen_c3': { en: '#StandWithTheCleaner', zh: '#力挺清潔隊員' },
-  'ending.netizen_c4': { en: '32 dollars over a person?', zh: '三十二塊比人重要？' },
-  'ending.netizen_c5': { en: 'Thank you for thirty years', zh: '謝謝你三十年' },
+  'ending.netizen_c1': { en: 'The grandma is grateful for him',          zh: '阿婆感謝有你' },
+  'ending.netizen_c2': { en: 'After this, who would dare help anyone?',  zh: '這樣大家以後怎麼幫人⋯？' },
+  'ending.netizen_c3': { en: '#StandWithTheCleaner',                      zh: '#力挺清潔隊員' },
+  'ending.netizen_c4': { en: 'Helped a grandma — and ended up sentenced...', zh: '幫助阿婆結果搞得自己被判刑⋯' },
+  'ending.netizen_c5': { en: '30 years of honest work and this is what he gets...', zh: '一生勤勤業業工作 30 年結果⋯' },
   // 2f — judges/prosecutors moved, leniency
-  'ending.act2f.title': { en: 'A weighing', zh: '衡量' },
+  'ending.act2f.title': { en: 'The scales', zh: '天平' },
   'ending.act2f.body': {
     en: [
       'Judges and prosecutors are moved by the response.',
-      'The sentence is reduced — three months, suspended two years.',
+      'The sentence is reduced — 3 months, suspended for 2 years.',
     ],
     zh: [
       '法官、檢察官也被輿論打動。',
-      '從輕量刑 — 三個月有期徒刑，緩刑兩年。',
+      '從輕量刑 — 3 個月有期徒刑，緩刑 2 年。',
     ],
   },
   // 2g — interview again, "still would help"
@@ -381,8 +381,8 @@ export const STRINGS = {
   },
   'ending.stamp_guilty': { en: 'GUILTY', zh: '有罪' },
   'ending.act3.title': {
-    en: 'Act III — And Yet',
-    zh: '第三幕 — 然而',
+    en: 'Act III — Sun After Rain',
+    zh: '第三幕 — 雨後天晴',
   },
   'ending.act3.body': {
     en: [

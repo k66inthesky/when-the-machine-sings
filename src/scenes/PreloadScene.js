@@ -90,13 +90,21 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.audio('sfx-qte-success', 'assets/audio/sfx/sfx_qte_success.mp3');
     this.load.audio('sfx-run', 'assets/audio/sfx/sfx_running_loop.mp3');
 
-    // Mom voice lines — one per day × two outcomes. Loaded if user has recorded.
+    // Mom voice lines — per-day caught/missed × two languages. ResultScene
+    // picks the lang suffix at play time based on I18n.lang.
     for (let day = 1; day <= 5; day++) {
       for (const outcome of ['caught', 'missed']) {
-        this.load.audio(`mom-d${day}-${outcome}`, [
-          `assets/audio/voice/mom_d${day}_${outcome}.mp3`,
-          `assets/audio/voice/mom_d${day}_${outcome}.ogg`,
-        ]);
+        for (const lang of ['zh', 'en']) {
+          this.load.audio(`mom-d${day}-${outcome}-${lang}`,
+            `assets/audio/voice/mom_d${day}_${outcome}_${lang}.mp3`);
+        }
+      }
+    }
+    // Encounter override voices (張阿姨 scold / 黃爺爺 proud / 陳奶奶 mild scold).
+    for (const kind of ['zhang_scold', 'huang_proud', 'chen_miss']) {
+      for (const lang of ['zh', 'en']) {
+        this.load.audio(`mom-enc-${kind}-${lang}`,
+          `assets/audio/voice/mom_enc_${kind}_${lang}.mp3`);
       }
     }
 

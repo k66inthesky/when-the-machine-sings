@@ -81,6 +81,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('player-walk-3', 'assets/images/char/player_walk_side_03.png');
     this.load.image('player-walk-4', 'assets/images/char/player_walk_side_04.png');
     this.load.image('player-run', 'assets/images/char/player_run_side.png');
+    this.load.image('player-run-left', 'assets/images/char/player_run_side_left.png');
     this.load.image('mom-angry', 'assets/images/char/mom_angry.png');
     this.load.image('mom-proud', 'assets/images/char/mom_proud.png');
     this.load.image('mom-satisfied', 'assets/images/char/mom_satisfied.png');

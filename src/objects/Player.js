@@ -51,15 +51,34 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   setFacing(dir) {
-    const scale = dir === 'left' ? -1 : 1;
-    this.setScale(scale, 1);
+    this.facing = dir === 'left' ? 'left' : 'right';
+    // If we're currently in a "run" pose AND a dedicated left-run texture
+    // exists, swap to it instead of mirror-flipping the container — keeps
+    // asymmetric details (bag in right hand, motion-line fan) painted
+    // correctly on both sides.
+    if (this.spriteMode && this.sprite && this.runMode) {
+      const tex = this.facing === 'left' && this.scene.textures.exists('player-run-left')
+        ? 'player-run-left'
+        : 'player-run';
+      this.sprite.setTexture(tex);
+      this.setScale(1, 1);
+      return;
+    }
+    // Walk/idle frames don't have a flipped variant — fall back to scale flip.
+    this.setScale(this.facing === 'left' ? -1 : 1, 1);
   }
 
   urgent() {
     this.bobTween.timeScale = 2.5;
     if (this.spriteMode && this.scene.textures.exists('player-run')) {
       if (this.walkTimer) { this.walkTimer.remove(false); this.walkTimer = null; }
-      this.sprite.setTexture('player-run');
+      this.runMode = true;
+      const tex = this.facing === 'left' && this.scene.textures.exists('player-run-left')
+        ? 'player-run-left'
+        : 'player-run';
+      this.sprite.setTexture(tex);
+      // running poses are dedicated per-direction; cancel any container flip
+      this.setScale(1, 1);
     } else if (this.spriteMode) {
       this.walk();
     }
@@ -67,6 +86,7 @@ export default class Player extends Phaser.GameObjects.Container {
 
   calm() {
     this.bobTween.timeScale = 1;
+    this.runMode = false;
     this.idle();
   }
 

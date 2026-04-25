@@ -38,6 +38,10 @@ const BACKUP_DIR = '/tmp/char_orig';
 const PROFILES = {
   mom: { tol: 32, lumGate: 180, satGate: 14, skinR: 175, skinRB: 24, paintedSat: 60, feather: 110 },
   flat: { tol: 28, lumGate: 200, satGate: 10, skinR: 175, skinRB: 22, paintedSat: 50, feather: 100 },
+  // Run sprite has motion-line speed marks that flow off the figure; if the
+  // tolerance is too tight, gaps in the motion fan stay opaque white. Wider
+  // tol + lower painted guard keeps the lines as FG while cutting the gaps.
+  run: { tol: 40, lumGate: 180, satGate: 12, skinR: 175, skinRB: 22, paintedSat: 38, feather: 100 },
 };
 
 const FILE_PROFILES = {
@@ -45,7 +49,7 @@ const FILE_PROFILES = {
   'mom_proud.png':           'mom',
   'mom_satisfied.png':       'mom',
   'player_front_idle.png':   'flat',
-  'player_run_side.png':     'flat',
+  'player_run_side.png':     'run',
   'player_walk_side_01.png': 'flat',
   'player_walk_side_02.png': 'flat',
   'player_walk_side_03.png': 'flat',
@@ -195,5 +199,15 @@ async function strip(inFile, outFile, profile) {
     const pct = (stats.cleared / stats.total * 100).toFixed(1);
     console.log(`  ✓ ${f.padEnd(26)} ${stats.width}×${stats.height}  cleared ${pct.padStart(5)}%  bg=${stats.bgRef.join(',')}  lum=${stats.bgLum}`);
   }
+
+  // Generate the left-facing run sprite by horizontally flipping the clean
+  // right-facing one. StreetScene swaps texture based on movement direction.
+  const runRight = path.join(CHAR_DIR, 'player_run_side.png');
+  const runLeft  = path.join(CHAR_DIR, 'player_run_side_left.png');
+  if (fs.existsSync(runRight)) {
+    await sharp(runRight).flop().toFile(runLeft);
+    console.log(`  ✓ player_run_side_left.png       (horizontal flip of player_run_side.png)`);
+  }
+
   console.log('\nDone. Reload the game to pick up the new alpha.');
 })().catch((e) => { console.error(e); process.exit(1); });

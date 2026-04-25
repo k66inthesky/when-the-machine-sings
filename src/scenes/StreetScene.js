@@ -98,11 +98,13 @@ export default class StreetScene extends Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#999',
     }).setOrigin(0.5);
 
-    // Tap buttons — mobile + mouse affordance alongside keyboard.
+    // Tap buttons — mobile + mouse affordance alongside keyboard. Each
+    // movement side also flips the player's facing so the run-pose sprite
+    // points where they're going (uses the dedicated left-run texture).
     const btnDefs = [
-      { label: '←', x: w / 2 - 140, action: () => { this.player.x = Math.max(60, this.player.x - 18); } },
+      { label: '←', x: w / 2 - 140, action: () => { this.player.setFacing('left');  this.player.x = Math.max(60, this.player.x - 18); } },
       { label: I18n.t('street.btn_throw'), x: w / 2, action: () => this.throwBag() },
-      { label: '→', x: w / 2 + 140, action: () => { this.player.x = Math.min(w - 60, this.player.x + 24); } },
+      { label: '→', x: w / 2 + 140, action: () => { this.player.setFacing('right'); this.player.x = Math.min(w - 60, this.player.x + 24); } },
     ];
     btnDefs.forEach((b) => {
       const bg = this.add.rectangle(b.x, h - 18, 100, 28, 0x1a1a2a, 0.7)
@@ -195,9 +197,11 @@ export default class StreetScene extends Phaser.Scene {
       this.scene.launch(SCENES.PAUSE, { resumeKey: SCENES.STREET });
     });
     this.input.keyboard.on('keydown-LEFT', () => {
+      this.player.setFacing('left');
       this.player.x = Math.max(60, this.player.x - 18);
     });
     this.input.keyboard.on('keydown-RIGHT', () => {
+      this.player.setFacing('right');
       this.player.x = Math.min(w - 60, this.player.x + 24);
     });
 

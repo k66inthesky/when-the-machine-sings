@@ -58,9 +58,11 @@ Playables.init();
 I18n.init();
 
 const game = new Phaser.Game(config);
-if (import.meta.env?.DEV) {
-  window.__PHASER_GAME__ = game;
-}
+// Expose the Phaser instance globally on every host (not just dev). Lets the
+// player open devtools and flip mute / advance scenes / dump audio cache if
+// something goes wrong, and lets the jam judges peek under the hood. Phaser
+// itself is already global — this just hands back the instance.
+window.__PHASER_GAME__ = game;
 
 // Respect YouTube's mute button in the Playables container. Outside YT
 // this is a no-op (the adapter returns isAudioEnabled=true + an empty

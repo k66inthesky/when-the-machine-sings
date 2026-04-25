@@ -34,9 +34,13 @@ export default class ResultScene extends Phaser.Scene {
     const mom = getMomLine(this.day, outcome);
 
     // Play recorded mom voice if loaded; otherwise silence — the on-screen line reads.
+    // Track the sound instance so SPACE can interrupt it instead of letting
+    // the clip drag past the player's patience (esp. day-5 missed line).
     const voiceKey = `mom-d${this.day}-${outcome}`;
+    this.momVoice = null;
     if (this.cache.audio.exists(voiceKey)) {
-      this.sound.play(voiceKey, { volume: 0.9 });
+      this.momVoice = this.sound.add(voiceKey, { volume: 0.9 });
+      this.momVoice.play();
     }
 
     // Pick the painted mom portrait keyed to outcome + day.
@@ -95,6 +99,10 @@ export default class ResultScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-SPACE', () => {
+      // Cut the mom voice off — pressing SPACE here means the player has
+      // read the line and is ready to move on. Letting the clip continue
+      // (esp. the long day-5 missed line) feels punishing.
+      if (this.momVoice && this.momVoice.isPlaying) this.momVoice.stop();
       this.cameras.main.fadeOut(400, 10, 10, 15);
       this.time.delayedCall(430, () => {
         if (this.day >= TOTAL_DAYS) {
@@ -104,6 +112,12 @@ export default class ResultScene extends Phaser.Scene {
           this.scene.start(SCENES.APARTMENT, { day: this.day + 1, totalScore: this.runningTotal });
         }
       });
+    });
+
+    // Belt-and-braces: also stop the voice if the scene is shut down for any
+    // other reason (HMR, scene jump from elsewhere).
+    this.events.once('shutdown', () => {
+      if (this.momVoice && this.momVoice.isPlaying) this.momVoice.stop();
     });
   }
 }

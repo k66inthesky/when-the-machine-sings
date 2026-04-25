@@ -80,24 +80,27 @@ export default class ApartmentScene extends Phaser.Scene {
         .setAlpha(0);
     }
 
-    // HUD — top bar
+    // HUD — top bar. Depth bumped above the phone/TV overlay (depth 800) so
+    // the day label / slack bar / truck bar / mom dialogue stay readable
+    // even when the modal dim is up.
+    const HUD_DEPTH = 1000;
     this.dayLabel = this.add.text(w / 2, 20, I18n.t('apt.day_label', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '18px', color: '#e8b96a',
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(HUD_DEPTH);
 
-    this.createSlackHud();
+    this.createSlackHud(HUD_DEPTH);
 
-    this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040);
-    this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0);
+    this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040).setDepth(HUD_DEPTH);
+    this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0).setDepth(HUD_DEPTH);
     this.truckLabel = this.add.text(w - 20, 38, I18n.t('apt.truck_label', { status: I18n.t('apt.truck_distant') }), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#e8dccb',
-    }).setOrigin(1, 0);
+    }).setOrigin(1, 0).setDepth(HUD_DEPTH);
 
     // Opening dialogue
     this.dialogue = this.add.text(w / 2, 55, getMomOpener(this.level.day), {
       fontFamily: 'serif', fontSize: '14px', color: '#e8dccb', fontStyle: 'italic',
       align: 'center', wordWrap: { width: w - 80 },
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(HUD_DEPTH);
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
     // Controls hint — also doubles as tap zones on touch devices.
@@ -132,7 +135,7 @@ export default class ApartmentScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) {
       const g = this.add.text(w - 236 - i * 14, 18, '♪', {
         fontFamily: 'serif', fontSize: '14px', color: '#e8b96a',
-      }).setOrigin(0.5, 0).setAlpha(0);
+      }).setOrigin(0.5, 0).setAlpha(0).setDepth(1000);
       this.noteGlyphs.push(g);
     }
 
@@ -143,8 +146,9 @@ export default class ApartmentScene extends Phaser.Scene {
       .setFillStyle()
       .setDepth(500);
 
-    // Notification popup (hidden by default)
-    this.notifGroup = this.add.container(0, 0).setVisible(false);
+    // Notification popup (hidden by default). Above the modal overlay so the
+    // mom-nag interruption stays visible even while the phone screen is up.
+    this.notifGroup = this.add.container(0, 0).setVisible(false).setDepth(1000);
     const notifBg = this.add.rectangle(w / 2, h - 90, 360, 44, 0x0a0a0f, 0.9).setStrokeStyle(2, 0x6acfff);
     this.notifText = this.add.text(w / 2, h - 90, '', {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#6acfff',
@@ -170,8 +174,10 @@ export default class ApartmentScene extends Phaser.Scene {
     // Input — ignore browser's auto-repeat so holding E or T can't farm slack.
     // Each physical press = one bump; release before pressing again. canSlack()
     // is still in place as a 220ms safety net for pointerdown spam.
-    this.input.keyboard.on('keydown-E', (e) => { if (e && e.repeat) return; this.scrollPhone(); });
-    this.input.keyboard.on('keydown-T', (e) => { if (e && e.repeat) return; this.toggleTv(); });
+    this.keyE = this.input.keyboard.addKey('E');
+    this.keyT = this.input.keyboard.addKey('T');
+    this.input.keyboard.on('keydown-E', (e) => { if (e && e.repeat) return; this.tryBothEyesNag('E') || this.scrollPhone(); });
+    this.input.keyboard.on('keydown-T', (e) => { if (e && e.repeat) return; this.tryBothEyesNag('T') || this.toggleTv(); });
     this.input.keyboard.on('keydown-ENTER', () => this.leaveForTruck());
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.left) return;
@@ -289,6 +295,49 @@ export default class ApartmentScene extends Phaser.Scene {
     if (now - (this._lastSlackAt || 0) < 220) return false;
     this._lastSlackAt = now;
     return true;
+  }
+
+  // If E and T are pressed at (or near) the same instant, scold the player
+  // instead of bumping slack. Treats "both held" as either key going down
+  // while the other is also down (within a short window). Returns true to
+  // signal the caller to skip its normal bump.
+  tryBothEyesNag(triggeredBy) {
+    if (this.left) return false;
+    const otherDown = (triggeredBy === 'E' ? this.keyT : this.keyE);
+    if (!otherDown || !otherDown.isDown) return false;
+    this.showBothEyesNag();
+    return true;
+  }
+
+  showBothEyesNag() {
+    // Throttle so the warning doesn't stack on each rapid alternation.
+    const now = this.time.now;
+    if (now - (this._lastBothEyesAt || 0) < 1200) return;
+    this._lastBothEyesAt = now;
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    // Dismiss any open overlays first — the nag IS the message right now.
+    this.dismissPhoneOverlay();
+    this.dismissTvOverlay();
+
+    const c = this.add.container(w / 2, h / 2 - 20).setDepth(1100);
+    const bg = this.add.rectangle(0, 0, 480, 80, 0x1a0a14, 0.94)
+      .setStrokeStyle(3, 0xff6b8a, 0.95);
+    const txt = this.add.text(0, 0, I18n.t('apt.both_eyes_warning'), {
+      fontFamily: 'serif', fontSize: '17px', color: '#ffd0d8', fontStyle: 'bold',
+      align: 'center', wordWrap: { width: 440 },
+    }).setOrigin(0.5);
+    c.add([bg, txt]);
+    Sfx.static(this);
+    c.setAlpha(0).setScale(0.85);
+    this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 180, ease: 'Back.easeOut' });
+    // Tiny shake so the scolding lands.
+    this.cameras.main.shake(120, 0.003);
+    this.time.delayedCall(1500, () => {
+      this.tweens.add({
+        targets: c, alpha: 0, duration: 240,
+        onComplete: () => c.destroy(),
+      });
+    });
   }
 
   scrollPhone() {
@@ -672,39 +721,43 @@ export default class ApartmentScene extends Phaser.Scene {
   // Top-left slack HUD: phone-icon + label + segmented progress bar + number.
   // Bar tier flips colour as the player gets greedier — cyan→amber→red — so
   // the cost of slacking is felt visually before the result screen scolds.
-  createSlackHud() {
+  createSlackHud(depth = 1000) {
     const x = 20;
     const y = 14;
     const barW = 110;
     const barH = 9;
+    const D = (o) => o.setDepth(depth);
 
     // Phone glyph — small rounded rect with screen + home dot
-    this.add.rectangle(x + 6, y + 13, 14, 22, 0x1a1a2a).setStrokeStyle(1, 0x6acfff);
-    this.add.rectangle(x + 6, y + 11, 10, 14, 0x6acfff, 0.45);
-    this.add.circle(x + 6, y + 21, 1.4, 0x6acfff);
+    D(this.add.rectangle(x + 6, y + 13, 14, 22, 0x1a1a2a).setStrokeStyle(1, 0x6acfff));
+    D(this.add.rectangle(x + 6, y + 11, 10, 14, 0x6acfff, 0.45));
+    D(this.add.circle(x + 6, y + 21, 1.4, 0x6acfff));
 
-    this.add.text(x + 22, y + 1, I18n.t('apt.slack_label_short'), {
+    D(this.add.text(x + 22, y + 1, I18n.t('apt.slack_label_short'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#9adfff',
-    });
+    }));
 
-    this.slackBarBg = this.add.rectangle(x + 22, y + 18, barW, barH, 0x102030)
-      .setOrigin(0, 0).setStrokeStyle(1, 0x4a6a80);
+    this.slackBarBg = D(this.add.rectangle(x + 22, y + 18, barW, barH, 0x102030)
+      .setOrigin(0, 0).setStrokeStyle(1, 0x4a6a80));
     // scaleX-driven fill — tweens reliably on Phaser Shapes (Rectangle.width
     // has a setter but doesn't cleanly tween via the WebGL renderer).
-    this.slackBar = this.add.rectangle(x + 22 + 1, y + 18 + 1, barW - 2, barH - 2, 0x6acfff)
-      .setOrigin(0, 0).setScale(0, 1);
+    this.slackBar = D(this.add.rectangle(x + 22 + 1, y + 18 + 1, barW - 2, barH - 2, 0x6acfff)
+      .setOrigin(0, 0).setScale(0, 1));
     // Tick marks at 33% / 66% to give the bar a notion of "tiers"
-    this.add.line(x + 22 + barW * 0.33, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
-      .setLineWidth(1);
-    this.add.line(x + 22 + barW * 0.66, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
-      .setLineWidth(1);
+    D(this.add.line(x + 22 + barW * 0.33, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1));
+    D(this.add.line(x + 22 + barW * 0.66, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1));
 
-    this.slackNum = this.add.text(x + 22 + barW + 8, y + 13, '0', {
+    this.slackNum = D(this.add.text(x + 22 + barW + 8, y + 13, '0', {
       fontFamily: 'monospace', fontSize: '15px', color: '#6acfff', fontStyle: 'bold',
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0, 0.5));
 
+    // Bar saturates well past the realistic per-day ceiling (~200 with a
+    // 220ms throttle over a 30s slack phase). Below 33% bar = chill, 33-66%
+    // = amber heads-up, above 66% = greedy red. See `bumpSlack()`.
     this.slackBarMax = barW - 2;
-    this.slackSoftCap = 60; // bar saturates at 60 points; number keeps counting
+    this.slackSoftCap = 200;
   }
 
   bumpSlack(amount) {

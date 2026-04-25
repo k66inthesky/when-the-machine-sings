@@ -97,6 +97,10 @@ export const STRINGS = {
     en: 'SLACK',
     zh: '摸魚',
   },
+  'apt.both_eyes_warning': {
+    en: 'You only have one pair of eyes — phone AND TV at once?',
+    zh: '你只有一雙眼睛，還想著同時滑手機及看電視啊！',
+  },
   'apt.truck_label': {
     en: 'Truck: {status}',
     zh: '垃圾車：{status}',

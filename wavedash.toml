@@ -7,5 +7,5 @@
 # entrypoint defaults to index.html which is what Vite emits, so we leave it
 # implicit.
 
-game_id = "REPLACE_ME_AFTER_wavedash_init"
+game_id = "j97fss80fz6yf8e3352ys1pwh185gd4f"
 upload_dir = "dist"

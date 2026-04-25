@@ -23,6 +23,21 @@ const ACT_KEYS = [
   { kind: 'text',     title: 'ending.credits.title',   body: 'ending.credits.body' },
 ];
 
+// Optional act inserted after Act III only if the player greeted 高小姐 in
+// the stairwell at any point during the week. Mom's matchmaking reveal is
+// week-end material — too big to land on a per-day result screen.
+const GAO_ACT = { kind: 'text', title: 'ending.gao.title', body: 'ending.gao.body' };
+
+function checkGreetedGao(registry) {
+  for (let d = 2; d <= 5; d++) {
+    if (registry.get(`encounter_d${d}_kind`) === 'gao'
+        && registry.get(`encounter_d${d}_engaged`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export default class EndingScene extends Phaser.Scene {
   constructor() {
     super(SCENES.ENDING);
@@ -37,6 +52,12 @@ export default class EndingScene extends Phaser.Scene {
 
   create() {
     this.actIndex = 0;
+    // Build the per-run act list — slot the Gao matchmaking insert in just
+    // before the credits if the player greeted her any day this week.
+    this.acts = ACT_KEYS.slice();
+    if (checkGreetedGao(this.registry)) {
+      this.acts.splice(this.acts.length - 1, 0, GAO_ACT);
+    }
     this.cameras.main.fadeIn(700, 5, 5, 10);
     if (this.failed) {
       // No bgm on fail — the silence sells the loss.
@@ -99,7 +120,7 @@ export default class EndingScene extends Phaser.Scene {
     this.children.removeAll();
     this.input.keyboard.removeAllListeners();
 
-    const act = ACT_KEYS[this.actIndex];
+    const act = this.acts[this.actIndex];
     const isVignette = act.kind === 'vignette';
 
     // Vignettes get a darker, flatter backdrop so the procedural illustration
@@ -139,7 +160,7 @@ export default class EndingScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    const isLast = this.actIndex === ACT_KEYS.length - 1;
+    const isLast = this.actIndex === this.acts.length - 1;
     if (isLast) {
       const best = this.persistHighScore(this.totalScore);
       const gradeKey = this.gradeKey(this.totalScore);
@@ -166,7 +187,7 @@ export default class EndingScene extends Phaser.Scene {
       this.cameras.main.fadeOut(500, 5, 5, 10);
       this.time.delayedCall(520, () => {
         this.actIndex += 1;
-        if (this.actIndex >= ACT_KEYS.length) {
+        if (this.actIndex >= this.acts.length) {
           this.scene.start(SCENES.TITLE);
         } else {
           this.cameras.main.fadeIn(500, 5, 5, 10);

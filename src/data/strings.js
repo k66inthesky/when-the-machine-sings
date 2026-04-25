@@ -123,17 +123,55 @@ export const STRINGS = {
                            zh: '北市垃圾車路線又調整 — 詳細時刻晚間八點公布' },
   'apt.tv_weather_head': { en: 'Tonight: muggy', zh: '今晚：悶熱' },
   'apt.tv_weather_sub':  { en: 'Light shower after midnight', zh: '半夜過後可能短暫陣雨' },
-  // Day-2..5 stairwell neighbours — a different face checks in on the player
-  // each evening as they thunder downstairs. Names + lines are kept short so
-  // they fit a single speech bubble.
-  'apt.neighbor_d2_name': { en: 'Auntie next door', zh: '隔壁阿姨' },
-  'apt.neighbor_d2_line': { en: 'Slow down, you tripping?', zh: '急什麼？慢慢走啦！' },
-  'apt.neighbor_d3_name': { en: 'Old Mr. Lin',      zh: '林伯伯' },
-  'apt.neighbor_d3_line': { en: 'Careful — wet steps tonight.', zh: '下雨樓梯滑，慢點。' },
-  'apt.neighbor_d4_name': { en: 'Little Mei',       zh: '小美妹妹' },
-  'apt.neighbor_d4_line': { en: 'Big bro, run run run!', zh: '哥哥跑跑跑！' },
-  'apt.neighbor_d5_name': { en: 'Uncle from 3F',    zh: '三樓阿伯' },
-  'apt.neighbor_d5_line': { en: 'Last day, kid. Got it covered?', zh: '今天最後一天囉，加油啦！' },
+  // Stairwell neighbours (D2-D5). Pool of 4 — order is randomised at week
+  // start and stored in the registry so each appears exactly once. Each
+  // encounter has an opener + a Y/N choice with consequences.
+  // ── 張阿姨 (3F gossip auntie) ──
+  'apt.nb_zhang_name':   { en: 'Auntie Zhang (3F)',     zh: '張阿姨（三樓）' },
+  'apt.nb_zhang_opener': { en: 'Wait, wait — I have to tell you about No. 12...',
+                            zh: '等等！我跟你說，十二號那家最近⋯' },
+  'apt.nb_zhang_yes':    { en: 'Listen', zh: '聽她說' },
+  'apt.nb_zhang_no':     { en: 'Excuse me',  zh: '先走一步' },
+  // ── 黃爺爺 (5F mobility-impaired grandpa) ──
+  'apt.nb_huang_name':   { en: 'Grandpa Huang (5F)',     zh: '黃爺爺（五樓）' },
+  'apt.nb_huang_opener': { en: 'Sonny... could you carry this up for me?',
+                            zh: '小朋友⋯這袋米可不可以幫爺爺提一下？' },
+  'apt.nb_huang_yes':    { en: 'Help him', zh: '幫他提' },
+  'apt.nb_huang_no':     { en: 'Sorry, in a rush',  zh: '不好意思要趕時間' },
+  // ── 陳奶奶 (2F village chief grandma) ──
+  'apt.nb_chen_name':    { en: 'Chief Chen (2F)',       zh: '里長陳奶奶（二樓）' },
+  'apt.nb_chen_opener':  { en: 'Heard the latest? Come, let me tell you...',
+                            zh: '欸欸欸 你聽我說喔，最近⋯' },
+  'apt.nb_chen_yes':     { en: 'Listen', zh: '停下來聽' },
+  'apt.nb_chen_no':      { en: 'Tomorrow!',  zh: '明天再聽' },
+  // ── 高小姐 (4F neighbour, same floor as player) ──
+  'apt.nb_gao_name':     { en: 'Miss Gao (4F)',         zh: '高小姐（四樓）' },
+  'apt.nb_gao_opener':   { en: '(she glances over for a beat)',
+                            zh: '（她朝你的方向望了一眼）' },
+  'apt.nb_gao_yes':      { en: 'Say hi', zh: '打招呼' },
+  'apt.nb_gao_no':       { en: 'Just a nod',  zh: '點頭走過' },
+  // 陳奶奶's local-info pool — shown in her bubble after the player chooses
+  // to listen. One picked at random per week.
+  'apt.chen_info_1':     { en: 'They put a new CCTV at the alley mouth — finally.',
+                            zh: '巷口剛裝新監視器，總算啦。' },
+  'apt.chen_info_2':     { en: 'Wang-tai-tai\'s boy got into Taida — celebration Saturday.',
+                            zh: '市場王太太的兒子考上台大，週六辦慶祝。' },
+  'apt.chen_info_3':     { en: 'Free masks at the chief\'s office tomorrow morning.',
+                            zh: '里長辦公室明天早上發口罩，記得拿。' },
+  'apt.chen_info_4':     { en: 'The phoenix tree by the park is finally blooming.',
+                            zh: '公園的鳳凰樹終於開花了，好看。' },
+  'apt.chen_info_5':     { en: '5F Huang\'s grandkids drove down — first time in months.',
+                            zh: '五樓黃爺爺的孫子下來了，幾個月不見囉。' },
+  // Common UI for the choice prompt
+  'apt.choice_y':        { en: 'Y', zh: 'Y' },
+  'apt.choice_n':        { en: 'N', zh: 'N' },
+  // Mom commentary — appended on the result screen when encounter flags set
+  'apt.mom_zhang_scold': { en: '...didn\'t I tell you to stop letting Zhang yap your ear off?',
+                            zh: '⋯不是叫你少跟張阿姨聊八卦嗎？' },
+  'apt.mom_huang_proud': { en: 'Missed the truck — but Huang\'s kids came by to thank you. Good boy.',
+                            zh: '雖然垃圾車沒趕上，但黃爺爺的家人特地來道謝。媽媽以你為傲。' },
+  'apt.mom_chen_miss':   { en: 'Listening to Chen-nai-nai is fine — but not when the truck is two minutes away!',
+                            zh: '聽陳奶奶講話可以，但是垃圾車快來的時候不行！' },
   'apt.stairwell_caption': {
     en: 'down five flights — concrete + Für Elise echoing up',
     zh: '老公寓五樓走下去 — 給愛麗絲從樓下飄上來',
@@ -366,6 +404,23 @@ export const STRINGS = {
       '它依然在唱歌。',
       '',
       '謝謝他們。',
+    ],
+  },
+  // Optional matchmaking insert — only shown if the player greeted 高小姐
+  // in the stairwell sometime that week.
+  'ending.gao.title': { en: 'A side note from Mom', zh: '媽媽順便講一件事' },
+  'ending.gao.body': {
+    en: [
+      'Miss Gao\'s mom said she really likes you.',
+      'Mom and her have been talking — they want to set you two up.',
+      '',
+      'You. Just. Stare.',
+    ],
+    zh: [
+      '高小姐的媽媽說她很喜歡你。',
+      '媽媽跟她最近在聊，說想把你們湊成一對。',
+      '',
+      '你⋯傻眼。',
     ],
   },
   'ending.credits.title': {

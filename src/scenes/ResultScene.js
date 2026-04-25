@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT, ENDING_THRESHOLD } from '../config.js';
 import { getMomLine } from '../data/dialogue.js';
 import { TOTAL_DAYS } from '../data/levels.js';
+import { NEIGHBORS } from '../data/neighbors.js';
 import I18n from '../systems/I18n.js';
 
 export default class ResultScene extends Phaser.Scene {
@@ -31,7 +32,27 @@ export default class ResultScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const outcome = this.caught ? 'caught' : 'missed';
-    const mom = getMomLine(this.day, outcome);
+    let mom = getMomLine(this.day, outcome);
+    // Stairwell encounter consequence — append mom commentary if the player
+    // engaged with a neighbour today whose interaction has a deferred line.
+    // 黃爺爺 / 陳奶奶: forfeit truck → mom flips proud / scolds-mildly.
+    // 張阿姨: chatted → mom scolds about gossip habits.
+    // 高小姐: greeting is week-end deferred (handled in EndingScene).
+    const encKind = this.registry.get(`encounter_d${this.day}_kind`);
+    const encEngaged = this.registry.get(`encounter_d${this.day}_engaged`);
+    if (encKind && encEngaged) {
+      const neighbor = NEIGHBORS[encKind];
+      if (neighbor && neighbor.momLine) {
+        // Mom's encounter commentary REPLACES the standard line for huang/chen
+        // (because forfeit days don't make sense with a "missed truck" scold);
+        // for zhang it ADDS after the standard line.
+        if (encKind === 'huang' || encKind === 'chen') {
+          mom = I18n.t(neighbor.momLine);
+        } else {
+          mom = `${mom}\n${I18n.t(neighbor.momLine)}`;
+        }
+      }
+    }
 
     // Play recorded mom voice if loaded; otherwise silence — the on-screen line reads.
     // Track the sound instance so SPACE can interrupt it instead of letting
@@ -43,9 +64,13 @@ export default class ResultScene extends Phaser.Scene {
       this.momVoice.play();
     }
 
-    // Pick the painted mom portrait keyed to outcome + day.
+    // Pick the painted mom portrait keyed to outcome + day. Special case:
+    // 黃爺爺 engagement flips the missed-truck day to PROUD because mom's
+    // line is praising you for helping. 陳奶奶 stays scolding (mild).
     let portraitKey = null;
-    if (!this.caught) {
+    if (encKind === 'huang' && encEngaged) {
+      portraitKey = 'mom-proud';
+    } else if (!this.caught) {
       portraitKey = 'mom-angry';
     } else if (this.day >= 4) {
       portraitKey = 'mom-proud';

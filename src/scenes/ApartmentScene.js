@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getLevel, getMomOpener } from '../data/levels.js';
 import { randomNag } from '../data/dialogue.js';
+import { getNeighborForDay, getChenInfoKey } from '../data/neighbors.js';
 import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
@@ -19,6 +20,16 @@ export default class ApartmentScene extends Phaser.Scene {
     this.slackPoints = 0;
     this.elapsed = 0;
     this.left = false;
+    // Day 1 = a fresh week — wipe last week's stairwell encounter flags +
+    // randomised neighbour order so each run feels distinct.
+    if (this.level.day === 1) {
+      this.registry.set('weekNeighborOrder', null);
+      this.registry.set('chenInfoKeyChosen', null);
+      for (let d = 2; d <= 5; d++) {
+        this.registry.set(`encounter_d${d}_kind`, null);
+        this.registry.set(`encounter_d${d}_engaged`, null);
+      }
+    }
     // Persist "I got as far as Day N with total X" so a browser refresh doesn't
     // wipe progress. EndingScene clears it when the week wraps.
     // In YT Playables this hits ytgame.saveData; on itch it's localStorage.
@@ -530,57 +541,196 @@ export default class ApartmentScene extends Phaser.Scene {
   // Taipei old-公寓 stairwell vignette before the player drops to the street.
   // Prefers the painted PNG (real-apartment look, decluttered by
   // scripts/clean-stairwell.cjs); falls back to a procedural draw if the
-  // asset is missing. Day 2-5 always overlay a neighbour with a speech
-  // bubble on top of whichever backdrop is used.
+  // asset is missing.
+  //
+  // Day 1 plays as a passive caption fade (you're alone). Day 2-5 spawn
+  // a randomly-selected neighbour from the four-person pool and ask the
+  // player a Y/N question — choices set encounter flags and may forfeit
+  // the truck for that day. onDone is called with `{ forfeit: true }` if
+  // the encounter cost the player the truck so the caller can route past
+  // the street scene.
   showStairwellTransition(onDone) {
     const w = GAME_WIDTH, h = GAME_HEIGHT;
     const c = this.add.container(0, 0).setDepth(2000);
 
     if (this.textures.exists('bg-stairwell')) {
-      // Painted backdrop + slight dim so any residual cleanup smudges fade.
       c.add(this.add.image(w / 2, h / 2, 'bg-stairwell').setDisplaySize(w, h));
       c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.22).setOrigin(0));
     } else {
       this.drawProceduralStairwell(c, w, h);
     }
 
-    // Day 2-5: a neighbour standing on the upper step says hi. Day 1 keeps
-    // the empty stairwell to underline how alone the player started out.
-    let neighborCleanup = () => {};
-    if (this.level.day >= 2) {
-      neighborCleanup = this.drawStairwellNeighbor(c, this.level.day);
-    }
-
-    // Caption — only on day 1 (the empty-stairwell day). On neighbour days
-    // the speech bubble itself is the caption.
-    let cap = null;
-    if (this.level.day === 1) {
-      cap = this.add.text(w / 2, h - 40, I18n.t('apt.stairwell_caption'), {
-        fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
-        stroke: '#000', strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(2001);
-    }
-
-    // Footstep echo
     Sfx.step(this);
     this.time.delayedCall(180, () => Sfx.step(this));
     this.time.delayedCall(360, () => Sfx.step(this));
 
-    // Fade envelope. Neighbour days hold ~700ms longer so the player can read.
-    const hold = this.level.day === 1 ? 1100 : 1900;
-    const targets = cap ? [c, cap] : [c];
-    c.setAlpha(0); if (cap) cap.setAlpha(0);
-    this.tweens.add({ targets, alpha: 1, duration: 220 });
-    this.time.delayedCall(hold, () => {
-      this.tweens.add({
-        targets, alpha: 0, duration: 260,
-        onComplete: () => {
-          c.destroy(); if (cap) cap.destroy();
-          neighborCleanup();
-          onDone && onDone();
-        },
+    if (this.level.day === 1) {
+      // Empty-stairwell day. Caption + auto-fade — no choice.
+      const cap = this.add.text(w / 2, h - 40, I18n.t('apt.stairwell_caption'), {
+        fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(2001);
+      c.setAlpha(0); cap.setAlpha(0);
+      this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
+      this.time.delayedCall(1100, () => {
+        this.tweens.add({
+          targets: [c, cap], alpha: 0, duration: 260,
+          onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
+        });
       });
+      return;
+    }
+
+    // D2-D5 — fetch (or create) the random neighbour for this day.
+    const neighbor = getNeighborForDay(this.registry, this.level.day);
+    this.runStairwellEncounter(c, neighbor, onDone);
+  }
+
+  // Builds the neighbour silhouette + speech bubble + Y/N choice prompt and
+  // waits for the player's answer (or auto-defaults to N after a timeout).
+  // Sets registry flags + invokes onDone with {forfeit} when done.
+  runStairwellEncounter(c, neighbor, onDone) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+
+    this.drawStairwellNeighborFigure(c, neighbor);
+    const bubbleLine = this.drawNeighborBubble(c, neighbor, I18n.t(neighbor.opener));
+
+    // Y/N choice card
+    const card = this.add.container(w / 2, h - 60).setDepth(2002);
+    const cardBg = this.add.rectangle(0, 0, 460, 60, 0x0a0a14, 0.93)
+      .setStrokeStyle(2, 0xe8b96a, 0.85);
+    card.add(cardBg);
+    const yLabel = this.add.text(-110, 0, `[Y] ${I18n.t(neighbor.yes)}`, {
+      fontFamily: 'sans-serif', fontSize: '15px', color: '#6affaa', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const nLabel = this.add.text(120, 0, `[N] ${I18n.t(neighbor.no)}`, {
+      fontFamily: 'sans-serif', fontSize: '15px', color: '#aac0d0',
+    }).setOrigin(0.5);
+    card.add([yLabel, nLabel]);
+
+    c.setAlpha(0); card.setAlpha(0);
+    this.tweens.add({ targets: [c, card], alpha: 1, duration: 220 });
+
+    let resolved = false;
+    const finish = (engaged) => {
+      if (resolved) return;
+      resolved = true;
+
+      // Persist encounter result so ResultScene + EndingScene can read.
+      this.registry.set(`encounter_d${this.level.day}_kind`, neighbor.kind);
+      this.registry.set(`encounter_d${this.level.day}_engaged`, engaged);
+      const forfeit = engaged && !!neighbor.forfeit;
+
+      // Reaction beat — for 陳奶奶 swap her bubble to the random local-info
+      // line so the "miss truck, gain info" trade is visible.
+      if (engaged && neighbor.kind === 'chen') {
+        bubbleLine.setText(I18n.t(getChenInfoKey(this.registry)));
+      } else if (engaged) {
+        bubbleLine.setText(I18n.t(neighbor.yes) + '⋯');
+      } else {
+        bubbleLine.setText('⋯');
+      }
+      // Replace choice card with a brief confirmation. removeAll(true)
+      // destroys + clears in one pass, avoiding the live-list iteration bug
+      // forEach + destroy() runs into.
+      card.removeAll(true);
+      const ackTxt = engaged ? I18n.t(neighbor.yes) : I18n.t(neighbor.no);
+      card.add(this.add.rectangle(0, 0, 320, 36, 0x0a0a14, 0.92).setStrokeStyle(1, 0x4a4a30, 0.7));
+      card.add(this.add.text(0, 0, ackTxt, {
+        fontFamily: 'serif', fontSize: '16px', color: engaged ? '#6affaa' : '#aac0d0',
+        fontStyle: 'italic',
+      }).setOrigin(0.5));
+
+      // 陳奶奶 engagement holds longer so the info line reads.
+      const hold = (engaged && neighbor.kind === 'chen') ? 2400 : 1300;
+      this.time.delayedCall(hold, () => {
+        this.tweens.add({
+          targets: [c, card], alpha: 0, duration: 260,
+          onComplete: () => {
+            c.destroy(); card.destroy();
+            onDone && onDone({ forfeit });
+          },
+        });
+      });
+    };
+
+    const keyHandler = (e) => {
+      if (resolved) return;
+      const k = e.code;
+      if (k === 'KeyY' || k === 'Space' || k === 'Enter') finish(true);
+      else if (k === 'KeyN' || k === 'Escape') finish(false);
+    };
+    this.input.keyboard.on('keydown', keyHandler);
+    yLabel.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => finish(true));
+    nLabel.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => finish(false));
+    // Auto-default to N after 6s so the player can't soft-lock if they idle.
+    this.time.delayedCall(6000, () => finish(false));
+    this.events.once('shutdown', () => {
+      this.input.keyboard.off('keydown', keyHandler);
     });
+  }
+
+  drawNeighborBubble(c, neighbor, lineText) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const nx = w * 0.62;
+    const ny = h * 0.66;
+    const padX = 14;
+    const bubbleY = ny - 78;
+    const tmp = this.add.text(0, 0, lineText, {
+      fontFamily: 'serif', fontSize: '14px', wordWrap: { width: 240 },
+    }).setVisible(false);
+    const bw = Math.min(280, Math.max(160, tmp.width + padX * 2));
+    tmp.destroy();
+    const bx = Math.min(w - bw / 2 - 16, nx - 40);
+    const bubbleBg = this.add.rectangle(bx, bubbleY, bw, 64, 0xfdfcf2, 0.96)
+      .setStrokeStyle(2, 0x1a1a1a, 0.85);
+    const bubbleTail = this.add.triangle(0, 0,
+      bx + 30, bubbleY + 32,
+      bx + 46, bubbleY + 32,
+      nx - 4, ny - 18,
+      0xfdfcf2, 0.96
+    ).setOrigin(0);
+    c.add(bubbleBg); c.add(bubbleTail);
+    c.add(this.add.text(bx, bubbleY - 16, I18n.t(neighbor.name), {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#8a5a30',
+    }).setOrigin(0.5));
+    const lineTxt = this.add.text(bx, bubbleY + 8, lineText, {
+      fontFamily: 'serif', fontSize: '14px', color: '#1a1a1a',
+      align: 'center', wordWrap: { width: bw - padX * 2 },
+    }).setOrigin(0.5);
+    c.add(lineTxt);
+    return lineTxt;
+  }
+
+  drawStairwellNeighborFigure(c, neighbor) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const nx = w * 0.62;
+    const ny = h * 0.66;
+    const s = neighbor.kind === 'gao' ? 0.92 : 1.0;
+
+    c.add(this.add.rectangle(nx, ny + 14 * s, 22 * s, 38 * s, neighbor.bodyColor));
+    c.add(this.add.rectangle(nx - 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    c.add(this.add.rectangle(nx + 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    c.add(this.add.rectangle(nx - 14 * s, ny + 12 * s, 5 * s, 22 * s, neighbor.bodyColor));
+    c.add(this.add.rectangle(nx + 14 * s, ny + 4 * s,  5 * s, 22 * s, neighbor.bodyColor).setRotation(-0.35));
+    c.add(this.add.circle(nx, ny - 12 * s, 9 * s, neighbor.headColor));
+    if (neighbor.hatColor) {
+      c.add(this.add.rectangle(nx, ny - 18 * s, 18 * s, 5 * s, neighbor.hatColor));
+    }
+    c.add(this.add.circle(nx - 3 * s, ny - 12 * s, 1.2, 0x101010));
+    c.add(this.add.circle(nx + 3 * s, ny - 12 * s, 1.2, 0x101010));
+
+    if (neighbor.prop === 'cane') {
+      c.add(this.add.line(0, 0, nx + 14 * s, ny + 4 * s, nx + 22 * s, ny + 38 * s, 0x6a4a30).setLineWidth(2));
+    } else if (neighbor.prop === 'sash') {
+      // Civic-leader red sash diagonally across torso.
+      c.add(this.add.line(0, 0, nx - 11 * s, ny - 4 * s, nx + 11 * s, ny + 28 * s, 0xc02030).setLineWidth(4));
+    } else if (neighbor.prop === 'tote') {
+      c.add(this.add.rectangle(nx + 16 * s, ny + 18 * s, 12 * s, 14 * s, 0xe8b6c8));
+      c.add(this.add.rectangle(nx + 16 * s, ny + 10 * s, 14 * s, 2, 0xe8b6c8));
+    }
   }
 
   drawProceduralStairwell(c, w, h) {
@@ -618,77 +768,6 @@ export default class ApartmentScene extends Phaser.Scene {
     }
   }
 
-  // Adds a small neighbour silhouette + speech bubble to the stairwell
-  // container. Returns a cleanup function (currently no-op since everything
-  // lives inside the container's destroy chain, but keeps the contract open).
-  drawStairwellNeighbor(c, day) {
-    const w = GAME_WIDTH, h = GAME_HEIGHT;
-    // Stand the neighbour on the upper-right portion of the staircase so they
-    // don't block the central vanishing point.
-    const nx = w * 0.62;
-    const ny = h * 0.66;
-    // Each day picks a different silhouette + tone.
-    const presets = {
-      2: { kind: 'auntie',   bodyColor: 0xb0506a, headColor: 0xf2c79a, hatColor: 0x2a1820 },
-      3: { kind: 'uncle',    bodyColor: 0x4a5a70, headColor: 0xe8b890, hatColor: 0x3a2820, prop: 'umbrella' },
-      4: { kind: 'kid',      bodyColor: 0xe8b96a, headColor: 0xf2c79a, hatColor: null },
-      5: { kind: 'old_man',  bodyColor: 0x6a5a4a, headColor: 0xe8b890, hatColor: 0x2a1810, prop: 'cane' },
-    };
-    const p = presets[day] || presets[2];
-    const s = p.kind === 'kid' ? 0.78 : 1.0;
-    // Body (torso)
-    c.add(this.add.rectangle(nx, ny + 14 * s, 22 * s, 38 * s, p.bodyColor));
-    // Pants
-    c.add(this.add.rectangle(nx - 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
-    c.add(this.add.rectangle(nx + 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
-    // Arms (one slightly raised in a wave)
-    c.add(this.add.rectangle(nx - 14 * s, ny + 12 * s, 5 * s, 22 * s, p.bodyColor));
-    c.add(this.add.rectangle(nx + 14 * s, ny + 4 * s,  5 * s, 22 * s, p.bodyColor).setRotation(-0.35));
-    // Head
-    c.add(this.add.circle(nx, ny - 12 * s, 9 * s, p.headColor));
-    // Hair / hat
-    if (p.hatColor) {
-      c.add(this.add.rectangle(nx, ny - 18 * s, 18 * s, 5 * s, p.hatColor));
-    }
-    // Eyes (dot pair)
-    c.add(this.add.circle(nx - 3 * s, ny - 12 * s, 1.2, 0x101010));
-    c.add(this.add.circle(nx + 3 * s, ny - 12 * s, 1.2, 0x101010));
-    // Optional prop
-    if (p.prop === 'umbrella') {
-      c.add(this.add.arc(nx + 22 * s, ny - 4 * s, 16 * s, 180, 360, false, 0x2a4060));
-      c.add(this.add.rectangle(nx + 22 * s, ny + 8 * s, 2, 24 * s, 0x6a4a30));
-    } else if (p.prop === 'cane') {
-      c.add(this.add.line(0, 0, nx + 14 * s, ny + 4 * s, nx + 22 * s, ny + 38 * s, 0x6a4a30).setLineWidth(2));
-    }
-
-    // Speech bubble — name above, line in the bubble. Bubble points down-left
-    // toward the neighbour's mouth.
-    const name = I18n.t(`apt.neighbor_d${day}_name`);
-    const line = I18n.t(`apt.neighbor_d${day}_line`);
-    const padX = 14, padY = 8;
-    const bubbleY = ny - 70;
-    // Measure roughly via temporary text
-    const tmp = this.add.text(0, 0, line, { fontFamily: 'serif', fontSize: '14px' }).setVisible(false);
-    const bw = Math.min(260, Math.max(120, tmp.width + padX * 2));
-    tmp.destroy();
-    const bx = Math.min(w - bw / 2 - 12, nx - 30);
-    const bubbleBg = this.add.rectangle(bx, bubbleY, bw, 50, 0xfdfcf2, 0.96).setStrokeStyle(2, 0x1a1a1a, 0.85);
-    const bubbleTail = this.add.triangle(0, 0,
-      bx + 30, bubbleY + 24,
-      bx + 46, bubbleY + 24,
-      nx - 4, ny - 18,
-      0xfdfcf2, 0.96
-    ).setOrigin(0);
-    c.add(bubbleBg); c.add(bubbleTail);
-    c.add(this.add.text(bx, bubbleY - 8, name, {
-      fontFamily: 'sans-serif', fontSize: '11px', color: '#8a5a30',
-    }).setOrigin(0.5));
-    c.add(this.add.text(bx, bubbleY + 8, line, {
-      fontFamily: 'serif', fontSize: '14px', color: '#1a1a1a',
-    }).setOrigin(0.5));
-
-    return () => {};
-  }
 
   scheduleNotifications() {
     const n = this.level.notifications;
@@ -798,9 +877,26 @@ export default class ApartmentScene extends Phaser.Scene {
     this.audio.stop();
     // Brief Taipei-stairwell vignette before the street drop. Skipped on a
     // forced (timed-out) exit so the player isn't punished with extra UI.
-    const goToStreet = () => {
+    // The vignette can also report a `forfeit` flag — set when the player
+    // engages 黃爺爺 / 陳奶奶 — meaning they helped the neighbour and gave up
+    // the truck. In that case route directly to RESULT (forced miss) so the
+    // street chase doesn't bait them with an unwinnable scenario.
+    const goToStreet = (extra) => {
+      const forfeit = !!(extra && extra.forfeit);
       this.cameras.main.fadeOut(280, 10, 10, 15);
       this.time.delayedCall(300, () => {
+        if (forfeit) {
+          this.scene.start(SCENES.RESULT, {
+            day: this.level.day,
+            slackPoints: this.slackPoints,
+            bagsHit: 0,
+            bagCount: this.level.bagCount,
+            caught: false,
+            forcedExit: true,
+            totalScore: this.totalScore,
+          });
+          return;
+        }
         this.scene.start(SCENES.STREET, {
           day: this.level.day,
           slackPoints: this.slackPoints,

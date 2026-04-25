@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getLevel, getMomOpener } from '../data/levels.js';
 import { randomNag } from '../data/dialogue.js';
+import { getNeighborForDay, getChenInfoKey } from '../data/neighbors.js';
 import AudioDistance from '../systems/AudioDistance.js';
 import { Sfx } from '../systems/Sfx.js';
 import Player from '../objects/Player.js';
@@ -19,6 +20,16 @@ export default class ApartmentScene extends Phaser.Scene {
     this.slackPoints = 0;
     this.elapsed = 0;
     this.left = false;
+    // Day 1 = a fresh week — wipe last week's stairwell encounter flags +
+    // per-day neighbour rolls so each run feels distinct.
+    if (this.level.day === 1) {
+      this.registry.set('chenInfoKeyChosen', null);
+      for (let d = 2; d <= 5; d++) {
+        this.registry.set(`neighborKindD${d}`, null);
+        this.registry.set(`encounter_d${d}_kind`, null);
+        this.registry.set(`encounter_d${d}_engaged`, null);
+      }
+    }
     // Persist "I got as far as Day N with total X" so a browser refresh doesn't
     // wipe progress. EndingScene clears it when the week wraps.
     // In YT Playables this hits ytgame.saveData; on itch it's localStorage.
@@ -80,32 +91,52 @@ export default class ApartmentScene extends Phaser.Scene {
         .setAlpha(0);
     }
 
-    // HUD — top bar
+    // HUD — top bar. Depth bumped above the phone/TV overlay (depth 800) so
+    // the day label / slack bar / truck bar / mom dialogue stay readable
+    // even when the modal dim is up.
+    const HUD_DEPTH = 1000;
     this.dayLabel = this.add.text(w / 2, 20, I18n.t('apt.day_label', { day: this.level.day }), {
       fontFamily: 'serif', fontSize: '18px', color: '#e8b96a',
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(HUD_DEPTH);
 
-    this.slackLabel = this.add.text(20, 20, I18n.t('apt.slack_label', { n: 0 }), {
-      fontFamily: 'sans-serif', fontSize: '16px', color: '#6acfff',
-    });
+    this.createSlackHud(HUD_DEPTH);
 
-    this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040);
-    this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0);
+    this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040).setDepth(HUD_DEPTH);
+    this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0).setDepth(HUD_DEPTH);
     this.truckLabel = this.add.text(w - 20, 38, I18n.t('apt.truck_label', { status: I18n.t('apt.truck_distant') }), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#e8dccb',
-    }).setOrigin(1, 0);
+    }).setOrigin(1, 0).setDepth(HUD_DEPTH);
 
     // Opening dialogue
     this.dialogue = this.add.text(w / 2, 55, getMomOpener(this.level.day), {
       fontFamily: 'serif', fontSize: '14px', color: '#e8dccb', fontStyle: 'italic',
       align: 'center', wordWrap: { width: w - 80 },
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(HUD_DEPTH);
     this.tweens.add({ targets: this.dialogue, alpha: 0.35, delay: 4000, duration: 2000 });
 
     // Controls hint — also doubles as tap zones on touch devices.
     this.hint = this.add.text(w / 2, h - 50, I18n.t('apt.hint'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#aaa',
     }).setOrigin(0.5);
+
+    // Slack tutorial — pops up briefly at start so first-time players know
+    // tapping E/T isn't a mistake but the actual scoring strategy. Auto-fades
+    // after ~5s so it doesn't block the main HUD for long.
+    const slackHint = this.add.text(w / 2, h / 2 + 120, I18n.t('apt.slack_hint'), {
+      fontFamily: 'serif', fontSize: '15px', color: '#fff4cc',
+      fontStyle: 'italic', align: 'center', lineSpacing: 4,
+      backgroundColor: 'rgba(20,16,32,0.85)', padding: { x: 14, y: 8 },
+      stroke: '#2a1a10', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(HUD_DEPTH).setAlpha(0);
+    this.tweens.add({
+      targets: slackHint, alpha: 1, duration: 400, delay: 1300,
+      onComplete: () => {
+        this.tweens.add({
+          targets: slackHint, alpha: 0, duration: 600, delay: 4500,
+          onComplete: () => slackHint.destroy(),
+        });
+      },
+    });
 
     // On-screen buttons — work for mouse + touch; keyboard still works too.
     // Each gets a small procedural pictogram on the left so the action reads at
@@ -134,7 +165,7 @@ export default class ApartmentScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) {
       const g = this.add.text(w - 236 - i * 14, 18, '♪', {
         fontFamily: 'serif', fontSize: '14px', color: '#e8b96a',
-      }).setOrigin(0.5, 0).setAlpha(0);
+      }).setOrigin(0.5, 0).setAlpha(0).setDepth(1000);
       this.noteGlyphs.push(g);
     }
 
@@ -145,8 +176,9 @@ export default class ApartmentScene extends Phaser.Scene {
       .setFillStyle()
       .setDepth(500);
 
-    // Notification popup (hidden by default)
-    this.notifGroup = this.add.container(0, 0).setVisible(false);
+    // Notification popup (hidden by default). Above the modal overlay so the
+    // mom-nag interruption stays visible even while the phone screen is up.
+    this.notifGroup = this.add.container(0, 0).setVisible(false).setDepth(1000);
     const notifBg = this.add.rectangle(w / 2, h - 90, 360, 44, 0x0a0a0f, 0.9).setStrokeStyle(2, 0x6acfff);
     this.notifText = this.add.text(w / 2, h - 90, '', {
       fontFamily: 'sans-serif', fontSize: '14px', color: '#6acfff',
@@ -169,9 +201,13 @@ export default class ApartmentScene extends Phaser.Scene {
       this.truckRecording.play();
     }
 
-    // Input
-    this.input.keyboard.on('keydown-E', () => this.scrollPhone());
-    this.input.keyboard.on('keydown-T', () => this.toggleTv());
+    // Input — ignore browser's auto-repeat so holding E or T can't farm slack.
+    // Each physical press = one bump; release before pressing again. canSlack()
+    // is still in place as a 220ms safety net for pointerdown spam.
+    this.keyE = this.input.keyboard.addKey('E');
+    this.keyT = this.input.keyboard.addKey('T');
+    this.input.keyboard.on('keydown-E', (e) => { if (e && e.repeat) return; this.tryBothEyesNag('E') || this.scrollPhone(); });
+    this.input.keyboard.on('keydown-T', (e) => { if (e && e.repeat) return; this.tryBothEyesNag('T') || this.toggleTv(); });
     this.input.keyboard.on('keydown-ENTER', () => this.leaveForTruck());
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.left) return;
@@ -280,10 +316,65 @@ export default class ApartmentScene extends Phaser.Scene {
     }
   }
 
+  // Throttle gate. keydown auto-repeats when a key is held; without this the
+  // player could pin E or T and farm slack at ~60/sec. 220ms cooldown caps
+  // realistic spam at ~4 taps/sec — fast enough to feel responsive on a real
+  // tap, slow enough that holding the key isn't a free win.
+  canSlack() {
+    const now = this.time.now;
+    if (now - (this._lastSlackAt || 0) < 220) return false;
+    this._lastSlackAt = now;
+    return true;
+  }
+
+  // If E and T are pressed at (or near) the same instant, scold the player
+  // instead of bumping slack. Treats "both held" as either key going down
+  // while the other is also down (within a short window). Returns true to
+  // signal the caller to skip its normal bump.
+  tryBothEyesNag(triggeredBy) {
+    if (this.left) return false;
+    const otherDown = (triggeredBy === 'E' ? this.keyT : this.keyE);
+    if (!otherDown || !otherDown.isDown) return false;
+    this.showBothEyesNag();
+    return true;
+  }
+
+  showBothEyesNag() {
+    // Throttle so the warning doesn't stack on each rapid alternation.
+    const now = this.time.now;
+    if (now - (this._lastBothEyesAt || 0) < 1200) return;
+    this._lastBothEyesAt = now;
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    // Dismiss any open overlays first — the nag IS the message right now.
+    this.dismissPhoneOverlay();
+    this.dismissTvOverlay();
+
+    const c = this.add.container(w / 2, h / 2 - 20).setDepth(1100);
+    const bg = this.add.rectangle(0, 0, 480, 80, 0x1a0a14, 0.94)
+      .setStrokeStyle(3, 0xff6b8a, 0.95);
+    const txt = this.add.text(0, 0, I18n.t('apt.both_eyes_warning'), {
+      fontFamily: 'serif', fontSize: '17px', color: '#ffd0d8', fontStyle: 'bold',
+      align: 'center', wordWrap: { width: 440 },
+    }).setOrigin(0.5);
+    c.add([bg, txt]);
+    Sfx.static(this);
+    c.setAlpha(0).setScale(0.85);
+    this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 180, ease: 'Back.easeOut' });
+    // Tiny shake so the scolding lands.
+    this.cameras.main.shake(120, 0.003);
+    this.time.delayedCall(1500, () => {
+      this.tweens.add({
+        targets: c, alpha: 0, duration: 240,
+        onComplete: () => c.destroy(),
+      });
+    });
+  }
+
   scrollPhone() {
     if (this.left) return;
-    this.slackPoints += 2;
-    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
+    if (!this.canSlack()) return;
+    this.dismissTvOverlay(); // mutually exclusive with TV
+    this.bumpSlack(2);
     Sfx.scroll(this);
     this.tweens.add({
       targets: this.phoneGlow,
@@ -296,8 +387,9 @@ export default class ApartmentScene extends Phaser.Scene {
 
   toggleTv() {
     if (this.left) return;
-    this.slackPoints += 1;
-    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
+    if (!this.canSlack()) return;
+    this.dismissPhoneOverlay(); // mutually exclusive with phone
+    this.bumpSlack(1);
     Sfx.static(this);
     this.tweens.add({
       targets: this.tvScreen,
@@ -306,6 +398,24 @@ export default class ApartmentScene extends Phaser.Scene {
       yoyo: true,
     });
     this.showTvOverlay();
+  }
+
+  dismissPhoneOverlay() {
+    if (this.phoneOverlay && this.phoneOverlay.active) {
+      const c = this.phoneOverlay;
+      this.phoneOverlay = null;
+      this.tweens.killTweensOf(c);
+      c.destroy();
+    }
+  }
+
+  dismissTvOverlay() {
+    if (this.tvOverlay && this.tvOverlay.active) {
+      const c = this.tvOverlay;
+      this.tvOverlay = null;
+      this.tweens.killTweensOf(c);
+      c.destroy();
+    }
   }
 
   // Procedural phone screen — vertical mock feed (avatar dots + caption stripes)
@@ -321,6 +431,13 @@ export default class ApartmentScene extends Phaser.Scene {
     const cx = w / 2, cy = h / 2;
     const pw = 200, ph = 340;
     const c = this.add.container(cx, cy).setDepth(800);
+    // Modal backdrop — full-screen dim child positioned to span the canvas in
+    // local coords (offset by -cx,-cy from the centred container). Its
+    // setInteractive() swallows clicks so the bottom buttons / wall objects
+    // can't be triggered through the overlay.
+    const backdrop = this.add.rectangle(-cx, -cy, w, h, 0x000000, 0.55).setOrigin(0)
+      .setInteractive();
+    c.add(backdrop);
     const frame = this.add.rectangle(0, 0, pw, ph, 0x0a0a14).setStrokeStyle(4, 0xe8b96a, 0.95);
     const screen = this.add.rectangle(0, 6, pw - 22, ph - 60, 0x141828);
     const notch = this.add.rectangle(0, -ph / 2 + 14, 60, 14, 0x000000);
@@ -369,6 +486,11 @@ export default class ApartmentScene extends Phaser.Scene {
     const cx = w / 2, cy = h / 2 - 10;
     const tw = 380, th = 240;
     const c = this.add.container(cx, cy).setDepth(800);
+    // Modal backdrop matching the phone overlay — dims the room + blocks
+    // input from leaking through to the buttons behind.
+    const backdrop = this.add.rectangle(-cx, -cy, w, h, 0x000000, 0.55).setOrigin(0)
+      .setInteractive();
+    c.add(backdrop);
     const cabinet = this.add.rectangle(0, 30, tw + 28, th + 70, 0x2a1a18).setStrokeStyle(2, 0x1a0a08);
     const screen = this.add.rectangle(0, 0, tw, th, 0x141a22).setStrokeStyle(3, 0x0a0a14);
     const knob1 = this.add.circle(tw / 2 - 14, th / 2 + 22, 6, 0x4a3020).setStrokeStyle(1, 0xe8b96a, 0.6);
@@ -436,23 +558,37 @@ export default class ApartmentScene extends Phaser.Scene {
   }
 
   // Taipei old-公寓 stairwell vignette before the player drops to the street.
-  // Prefers the AI-painted bg-stairwell PNG; falls back to a procedural draw
-  // (concrete walls, mosaic steps, rusty handrail, flickering tube, mailboxes,
-  // scooter shadow) so the moment still lands even if the asset is missing.
+  // Prefers the painted PNG (real-apartment look, decluttered by
+  // scripts/clean-stairwell.cjs); falls back to a procedural draw if the
+  // asset is missing.
+  //
+  // Day 1 plays as a passive caption fade (you're alone). Day 2-5 spawn
+  // a randomly-selected neighbour from the four-person pool and ask the
+  // player a Y/N question — choices set encounter flags and may forfeit
+  // the truck for that day. onDone is called with `{ forfeit: true }` if
+  // the encounter cost the player the truck so the caller can route past
+  // the street scene.
   showStairwellTransition(onDone) {
     const w = GAME_WIDTH, h = GAME_HEIGHT;
     const c = this.add.container(0, 0).setDepth(2000);
+
     if (this.textures.exists('bg-stairwell')) {
       c.add(this.add.image(w / 2, h / 2, 'bg-stairwell').setDisplaySize(w, h));
-      c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.18).setOrigin(0));
-      // Caption + footsteps + fade — same envelope as the procedural path.
-      const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
+      c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.22).setOrigin(0));
+    } else {
+      this.drawProceduralStairwell(c, w, h);
+    }
+
+    Sfx.step(this);
+    this.time.delayedCall(180, () => Sfx.step(this));
+    this.time.delayedCall(360, () => Sfx.step(this));
+
+    if (this.level.day === 1) {
+      // Empty-stairwell day. Caption + auto-fade — no choice.
+      const cap = this.add.text(w / 2, h - 40, I18n.t('apt.stairwell_caption'), {
         fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
         stroke: '#000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(2001);
-      Sfx.step(this);
-      this.time.delayedCall(180, () => Sfx.step(this));
-      this.time.delayedCall(360, () => Sfx.step(this));
       c.setAlpha(0); cap.setAlpha(0);
       this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
       this.time.delayedCall(1100, () => {
@@ -463,114 +599,210 @@ export default class ApartmentScene extends Phaser.Scene {
       });
       return;
     }
-    // Block out the whole frame
+
+    // D2-D5 — fetch (or create) the random neighbour for this day.
+    const neighbor = getNeighborForDay(this.registry, this.level.day);
+    this.runStairwellEncounter(c, neighbor, onDone);
+  }
+
+  // Builds the neighbour silhouette + speech bubble + a 2-second [E] window.
+  // If the player presses E (or taps the prompt) inside the window, they
+  // engage. If the timer runs out, they walk past — no consequence. Way
+  // less menu-heavy than the prior Y/N card.
+  runStairwellEncounter(c, neighbor, onDone) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const WINDOW_MS = 2000;
+
+    this.drawStairwellNeighborFigure(c, neighbor);
+    const bubbleLine = this.drawNeighborBubble(c, neighbor, I18n.t(neighbor.opener));
+
+    // Cultural footnote — appears as a thin caption at the top of the
+    // stairwell so the player understands why these chance encounters
+    // still happen at trash time even in modern Taipei.
+    const meta = this.add.text(w / 2, 22, I18n.t('apt.stairwell_meta'), {
+      fontFamily: 'serif', fontSize: '13px', color: '#fff4cc', fontStyle: 'italic',
+      align: 'center', wordWrap: { width: w - 80 },
+      backgroundColor: 'rgba(20,16,32,0.78)', padding: { x: 12, y: 6 },
+    }).setOrigin(0.5, 0).setDepth(2003);
+    c.add(meta);
+
+    // [E] prompt card with a thin shrinking timer bar so the 2s window is
+    // visible. Pressing E (or clicking) inside the window engages.
+    const card = this.add.container(w / 2, h - 60).setDepth(2002);
+    const cardBg = this.add.rectangle(0, 0, 460, 60, 0x0a0a14, 0.93)
+      .setStrokeStyle(2, 0xe8b96a, 0.85);
+    const promptTxt = this.add.text(0, -8, `[E] ${I18n.t(neighbor.yes)}`, {
+      fontFamily: 'sans-serif', fontSize: '15px', color: '#6affaa', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const subTxt = this.add.text(0, 12, I18n.t('apt.nb_press_e_window'), {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#9aa0a8',
+    }).setOrigin(0.5);
+    const timerBg = this.add.rectangle(-200, 22, 400, 4, 0x102030).setOrigin(0, 0.5);
+    const timerBar = this.add.rectangle(-200 + 1, 22, 398, 3, 0x6affaa).setOrigin(0, 0.5);
+    card.add([cardBg, promptTxt, subTxt, timerBg, timerBar]);
+
+    c.setAlpha(0); card.setAlpha(0);
+    this.tweens.add({ targets: [c, card], alpha: 1, duration: 220 });
+    // Drain the timer bar to 0 over WINDOW_MS — visual countdown.
+    this.tweens.add({
+      targets: timerBar, scaleX: 0, duration: WINDOW_MS, ease: 'Linear',
+    });
+
+    let resolved = false;
+    const finish = (engaged) => {
+      if (resolved) return;
+      resolved = true;
+
+      // Persist encounter result so ResultScene + EndingScene can read.
+      this.registry.set(`encounter_d${this.level.day}_kind`, neighbor.kind);
+      this.registry.set(`encounter_d${this.level.day}_engaged`, engaged);
+      const forfeit = engaged && !!neighbor.forfeit;
+
+      // Reaction beat — for 陳奶奶 swap her bubble to the random local-info
+      // line so the "miss truck, gain info" trade is visible.
+      if (engaged && neighbor.kind === 'chen') {
+        bubbleLine.setText(I18n.t(getChenInfoKey(this.registry)));
+      } else if (engaged) {
+        bubbleLine.setText(I18n.t(neighbor.yes) + '⋯');
+      } else {
+        bubbleLine.setText('⋯');
+      }
+      // Swap the prompt card for a brief acknowledgement.
+      card.removeAll(true);
+      const ackTxt = engaged ? I18n.t(neighbor.yes) : I18n.t('apt.nb_walk_past');
+      card.add(this.add.rectangle(0, 0, 320, 36, 0x0a0a14, 0.92).setStrokeStyle(1, 0x4a4a30, 0.7));
+      card.add(this.add.text(0, 0, ackTxt, {
+        fontFamily: 'serif', fontSize: '16px', color: engaged ? '#6affaa' : '#aac0d0',
+        fontStyle: 'italic',
+      }).setOrigin(0.5));
+
+      // 陳奶奶 engagement holds longer so the info line reads.
+      const hold = (engaged && neighbor.kind === 'chen') ? 2400 : 1100;
+      this.time.delayedCall(hold, () => {
+        this.tweens.add({
+          targets: [c, card], alpha: 0, duration: 260,
+          onComplete: () => {
+            c.destroy(); card.destroy();
+            onDone && onDone({ forfeit });
+          },
+        });
+      });
+    };
+
+    // Press E inside the 2s window = engage. Anything else (or the timer
+    // expiring) = walk past.
+    const keyHandler = (e) => {
+      if (resolved) return;
+      if (e && e.repeat) return; // ignore browser key auto-repeat
+      if (e.code === 'KeyE') finish(true);
+    };
+    this.input.keyboard.on('keydown', keyHandler);
+    promptTxt.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => finish(true));
+    cardBg.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => finish(true));
+    this.time.delayedCall(WINDOW_MS, () => finish(false));
+    this.events.once('shutdown', () => {
+      this.input.keyboard.off('keydown', keyHandler);
+    });
+  }
+
+  drawNeighborBubble(c, neighbor, lineText) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const nx = w * 0.62;
+    const ny = h * 0.66;
+    const padX = 14;
+    const bubbleY = ny - 78;
+    const tmp = this.add.text(0, 0, lineText, {
+      fontFamily: 'serif', fontSize: '14px', wordWrap: { width: 240 },
+    }).setVisible(false);
+    const bw = Math.min(280, Math.max(160, tmp.width + padX * 2));
+    tmp.destroy();
+    const bx = Math.min(w - bw / 2 - 16, nx - 40);
+    const bubbleBg = this.add.rectangle(bx, bubbleY, bw, 64, 0xfdfcf2, 0.96)
+      .setStrokeStyle(2, 0x1a1a1a, 0.85);
+    const bubbleTail = this.add.triangle(0, 0,
+      bx + 30, bubbleY + 32,
+      bx + 46, bubbleY + 32,
+      nx - 4, ny - 18,
+      0xfdfcf2, 0.96
+    ).setOrigin(0);
+    c.add(bubbleBg); c.add(bubbleTail);
+    c.add(this.add.text(bx, bubbleY - 16, I18n.t(neighbor.name), {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#8a5a30',
+    }).setOrigin(0.5));
+    const lineTxt = this.add.text(bx, bubbleY + 8, lineText, {
+      fontFamily: 'serif', fontSize: '14px', color: '#1a1a1a',
+      align: 'center', wordWrap: { width: bw - padX * 2 },
+    }).setOrigin(0.5);
+    c.add(lineTxt);
+    return lineTxt;
+  }
+
+  drawStairwellNeighborFigure(c, neighbor) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const nx = w * 0.62;
+    const ny = h * 0.66;
+    const s = neighbor.kind === 'gao' ? 0.92 : 1.0;
+
+    c.add(this.add.rectangle(nx, ny + 14 * s, 22 * s, 38 * s, neighbor.bodyColor));
+    c.add(this.add.rectangle(nx - 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    c.add(this.add.rectangle(nx + 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    c.add(this.add.rectangle(nx - 14 * s, ny + 12 * s, 5 * s, 22 * s, neighbor.bodyColor));
+    c.add(this.add.rectangle(nx + 14 * s, ny + 4 * s,  5 * s, 22 * s, neighbor.bodyColor).setRotation(-0.35));
+    c.add(this.add.circle(nx, ny - 12 * s, 9 * s, neighbor.headColor));
+    if (neighbor.hatColor) {
+      c.add(this.add.rectangle(nx, ny - 18 * s, 18 * s, 5 * s, neighbor.hatColor));
+    }
+    c.add(this.add.circle(nx - 3 * s, ny - 12 * s, 1.2, 0x101010));
+    c.add(this.add.circle(nx + 3 * s, ny - 12 * s, 1.2, 0x101010));
+
+    if (neighbor.prop === 'cane') {
+      c.add(this.add.line(0, 0, nx + 14 * s, ny + 4 * s, nx + 22 * s, ny + 38 * s, 0x6a4a30).setLineWidth(2));
+    } else if (neighbor.prop === 'sash') {
+      // Civic-leader red sash diagonally across torso.
+      c.add(this.add.line(0, 0, nx - 11 * s, ny - 4 * s, nx + 11 * s, ny + 28 * s, 0xc02030).setLineWidth(4));
+    } else if (neighbor.prop === 'tote') {
+      c.add(this.add.rectangle(nx + 16 * s, ny + 18 * s, 12 * s, 14 * s, 0xe8b6c8));
+      c.add(this.add.rectangle(nx + 16 * s, ny + 10 * s, 14 * s, 2, 0xe8b6c8));
+    }
+  }
+
+  drawProceduralStairwell(c, w, h) {
     c.add(this.add.rectangle(0, 0, w, h, 0x0a0a0e).setOrigin(0));
-    // Walls — gradient-ish bands of concrete grey-green
     c.add(this.add.rectangle(0, 0, w, h, 0x2a2820).setOrigin(0));
-    c.add(this.add.rectangle(0, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
-    c.add(this.add.rectangle(w * 0.70, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
-    // Wall stains (random ochre/grey patches)
-    for (let i = 0; i < 14; i++) {
-      const px = Phaser.Math.Between(40, w - 40);
-      const py = Phaser.Math.Between(40, h * 0.6);
-      const pw = Phaser.Math.Between(16, 60);
-      const ph = Phaser.Math.Between(8, 30);
-      const tone = [0x3a3025, 0x4a3a28, 0x2a221a][i % 3];
-      c.add(this.add.rectangle(px, py, pw, ph, tone, 0.45));
-    }
-    // Cracks (thin diagonal lines)
-    for (let i = 0; i < 5; i++) {
-      const x1 = Phaser.Math.Between(0, w);
-      const y1 = Phaser.Math.Between(20, h * 0.5);
-      const x2 = x1 + Phaser.Math.Between(-40, 40);
-      const y2 = y1 + Phaser.Math.Between(40, 100);
-      c.add(this.add.line(0, 0, x1, y1, x2, y2, 0x0a0808, 0.6).setOrigin(0).setLineWidth(1));
-    }
-    // Ceiling tube light (flickers)
+    c.add(this.add.rectangle(0, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
+    c.add(this.add.rectangle(w * 0.72, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
     const ceil = this.add.rectangle(w / 2, 28, 200, 14, 0x3a3a30).setStrokeStyle(1, 0x1a1a14);
     const tube = this.add.rectangle(w / 2, 28, 180, 6, 0xfff4cc, 0.95);
     c.add(ceil); c.add(tube);
-    this.tweens.add({ targets: tube, alpha: 0.55, duration: 90, yoyo: true, repeat: 8 });
-    // Light cone
-    const cone = this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0);
-    c.add(cone);
-    // Steps descending — mosaic-tile front face + tread, perspective-narrowing
-    // toward a vanishing point at (w/2, h*0.55).
+    this.tweens.add({ targets: tube, alpha: 0.6, duration: 110, yoyo: true, repeat: 4 });
+    c.add(this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0));
     const vx = w / 2, vy = h * 0.55;
     const stepCount = 9;
     for (let i = 0; i < stepCount; i++) {
       const t = i / stepCount;
       const tn = (i + 1) / stepCount;
-      // y on screen
       const y0 = vy + (h - vy) * Math.pow(t, 1.4);
       const y1 = vy + (h - vy) * Math.pow(tn, 1.4);
-      // half-width at this depth
       const hw0 = (w * 0.5 - 60) * Math.pow(tn, 0.85) + 40;
       const hw1 = (w * 0.5 - 60) * Math.pow(t, 0.85) + 40;
-      // Tread (top face)
-      const tread = this.add.polygon(0, 0, [
+      c.add(this.add.polygon(0, 0, [
         vx - hw1, y0, vx + hw1, y0,
         vx + hw0, y1, vx - hw0, y1,
-      ], 0x9a8a70, 0.95).setOrigin(0);
-      tread.setStrokeStyle(1, 0x4a3a28, 0.8);
-      c.add(tread);
-      // Riser front (small dark band just above)
-      const riser = this.add.polygon(0, 0, [
+      ], 0x9a8a70, 0.95).setOrigin(0).setStrokeStyle(1, 0x4a3a28, 0.8));
+      c.add(this.add.polygon(0, 0, [
         vx - hw1, y0 - 6, vx + hw1, y0 - 6,
         vx + hw1, y0, vx - hw1, y0,
-      ], 0x3a2a22, 0.95).setOrigin(0);
-      c.add(riser);
-      // Mosaic dots on the tread
-      const dots = 8 - i;
-      for (let d = -dots; d <= dots; d++) {
-        const dx = vx + (hw0 * d / (dots + 1));
-        const dy = (y0 + y1) / 2;
-        c.add(this.add.circle(dx, dy, 1.5 + (1 - t) * 1.5, 0x6a5a40, 0.55));
-      }
+      ], 0x3a2a22, 0.95).setOrigin(0));
     }
-    // Right-side handrail — three vertical posts + a sloped rail
-    for (let i = 0; i < 3; i++) {
-      const t = i / 3;
-      const tn = (i + 0.5) / 3;
-      const x = w / 2 + (w * 0.5 - 60) * Math.pow(tn, 0.85) + 30;
-      const y0 = vy + (h - vy) * Math.pow(tn, 1.4);
-      c.add(this.add.rectangle(x, y0, 4, 50, 0x6a4a30).setOrigin(0.5, 1));
+    for (const side of [-1, 1]) {
+      const railX1 = w / 2 + side * 60;
+      const railX2 = side > 0 ? w - 30 : 30;
+      c.add(this.add.line(0, 0, railX1, vy + 6, railX2, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
     }
-    c.add(this.add.line(0, 0, w / 2 + 60, vy + 6, w - 30, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
-    // Mailboxes on left wall — small grid of metal squares
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 2; col++) {
-        const mx = 36 + col * 26;
-        const my = h * 0.30 + row * 36;
-        c.add(this.add.rectangle(mx, my, 22, 30, 0x3a4050).setStrokeStyle(1, 0x6a7080));
-        c.add(this.add.rectangle(mx, my + 8, 12, 1, 0x1a1a1a));
-        c.add(this.add.circle(mx + 6, my - 6, 1.5, 0xe8b96a));
-      }
-    }
-    // Shadowed scooter silhouette bottom-left (just a hint)
-    c.add(this.add.rectangle(70, h - 24, 80, 20, 0x0a0a0e, 0.85));
-    c.add(this.add.circle(50, h - 14, 10, 0x0a0a0e, 0.85));
-    c.add(this.add.circle(110, h - 14, 10, 0x0a0a0e, 0.85));
-    // Caption
-    const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
-      fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
-      stroke: '#000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(2001);
-    // Footstep echo
-    Sfx.step(this);
-    this.time.delayedCall(180, () => Sfx.step(this));
-    this.time.delayedCall(360, () => Sfx.step(this));
-    // Fade in fast, hold, then fade out + done.
-    c.setAlpha(0);
-    cap.setAlpha(0);
-    this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
-    this.time.delayedCall(1100, () => {
-      this.tweens.add({
-        targets: [c, cap], alpha: 0, duration: 260,
-        onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
-      });
-    });
   }
+
 
   scheduleNotifications() {
     const n = this.level.notifications;
@@ -600,6 +832,79 @@ export default class ApartmentScene extends Phaser.Scene {
     });
   }
 
+  // Top-left slack HUD: phone-icon + label + segmented progress bar + number.
+  // Bar tier flips colour as the player gets greedier — cyan→amber→red — so
+  // the cost of slacking is felt visually before the result screen scolds.
+  createSlackHud(depth = 1000) {
+    const x = 20;
+    const y = 14;
+    const barW = 110;
+    const barH = 9;
+    const D = (o) => o.setDepth(depth);
+
+    // Phone glyph — small rounded rect with screen + home dot
+    D(this.add.rectangle(x + 6, y + 13, 14, 22, 0x1a1a2a).setStrokeStyle(1, 0x6acfff));
+    D(this.add.rectangle(x + 6, y + 11, 10, 14, 0x6acfff, 0.45));
+    D(this.add.circle(x + 6, y + 21, 1.4, 0x6acfff));
+
+    D(this.add.text(x + 22, y + 1, I18n.t('apt.slack_label_short'), {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#9adfff',
+    }));
+
+    this.slackBarBg = D(this.add.rectangle(x + 22, y + 18, barW, barH, 0x102030)
+      .setOrigin(0, 0).setStrokeStyle(1, 0x4a6a80));
+    // scaleX-driven fill — tweens reliably on Phaser Shapes (Rectangle.width
+    // has a setter but doesn't cleanly tween via the WebGL renderer).
+    this.slackBar = D(this.add.rectangle(x + 22 + 1, y + 18 + 1, barW - 2, barH - 2, 0x6acfff)
+      .setOrigin(0, 0).setScale(0, 1));
+    // Tick marks at 33% / 66% to give the bar a notion of "tiers"
+    D(this.add.line(x + 22 + barW * 0.33, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1));
+    D(this.add.line(x + 22 + barW * 0.66, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1));
+
+    this.slackNum = D(this.add.text(x + 22 + barW + 8, y + 13, '0', {
+      fontFamily: 'monospace', fontSize: '15px', color: '#6acfff', fontStyle: 'bold',
+    }).setOrigin(0, 0.5));
+
+    // Bar saturates well past the realistic per-day ceiling (~200 with a
+    // 220ms throttle over a 30s slack phase). Below 33% bar = chill, 33-66%
+    // = amber heads-up, above 66% = greedy red. See `bumpSlack()`.
+    this.slackBarMax = barW - 2;
+    this.slackSoftCap = 200;
+  }
+
+  bumpSlack(amount) {
+    this.slackPoints += amount;
+    this.slackNum.setText(String(this.slackPoints));
+
+    // Tier colours track greed: cyan (chill) → amber (heads up) → red (greedy).
+    let color = 0x6acfff;
+    let textColor = '#6acfff';
+    if (this.slackPoints >= this.slackSoftCap * 0.66) { color = 0xff6b8a; textColor = '#ff6b8a'; }
+    else if (this.slackPoints >= this.slackSoftCap * 0.33) { color = 0xe8b96a; textColor = '#e8b96a'; }
+
+    const fillRatio = Math.min(1, this.slackPoints / this.slackSoftCap);
+    this.slackBar.fillColor = color;
+    this.slackNum.setColor(textColor);
+
+    this.tweens.add({
+      targets: this.slackBar,
+      scaleX: fillRatio,
+      duration: 220,
+      ease: 'Cubic.easeOut',
+    });
+    // Quick number pop + bar flash so each tap feels rewarding (and hollow).
+    this.slackNum.setScale(1.35);
+    this.tweens.add({
+      targets: this.slackNum, scale: 1, duration: 200, ease: 'Back.easeOut',
+    });
+    this.slackBar.setAlpha(1);
+    this.tweens.add({
+      targets: this.slackBar, alpha: 0.7, duration: 120, yoyo: true,
+    });
+  }
+
   leaveForTruck(forced = false) {
     if (this.left) return;
     this.left = true;
@@ -607,9 +912,26 @@ export default class ApartmentScene extends Phaser.Scene {
     this.audio.stop();
     // Brief Taipei-stairwell vignette before the street drop. Skipped on a
     // forced (timed-out) exit so the player isn't punished with extra UI.
-    const goToStreet = () => {
+    // The vignette can also report a `forfeit` flag — set when the player
+    // engages 黃爺爺 / 陳奶奶 — meaning they helped the neighbour and gave up
+    // the truck. In that case route directly to RESULT (forced miss) so the
+    // street chase doesn't bait them with an unwinnable scenario.
+    const goToStreet = (extra) => {
+      const forfeit = !!(extra && extra.forfeit);
       this.cameras.main.fadeOut(280, 10, 10, 15);
       this.time.delayedCall(300, () => {
+        if (forfeit) {
+          this.scene.start(SCENES.RESULT, {
+            day: this.level.day,
+            slackPoints: this.slackPoints,
+            bagsHit: 0,
+            bagCount: this.level.bagCount,
+            caught: false,
+            forcedExit: true,
+            totalScore: this.totalScore,
+          });
+          return;
+        }
         this.scene.start(SCENES.STREET, {
           day: this.level.day,
           slackPoints: this.slackPoints,

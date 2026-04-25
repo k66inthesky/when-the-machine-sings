@@ -10,6 +10,11 @@ export const COLORS = {
   accent: 0x6acfff,
 };
 
+// Minimum week-end total to unlock the Act I–III ending. Below this, the
+// player gets a "挑戰失敗" card instead. Set just below the "Got by" grade
+// so a player who clears most days but slacks on one still sees the story.
+export const ENDING_THRESHOLD = 500;
+
 export const SCENES = {
   BOOT: 'BootScene',
   PRELOAD: 'PreloadScene',

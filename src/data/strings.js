@@ -119,6 +119,17 @@ export const STRINGS = {
                            zh: '北市垃圾車路線又調整 — 詳細時刻晚間八點公布' },
   'apt.tv_weather_head': { en: 'Tonight: muggy', zh: '今晚：悶熱' },
   'apt.tv_weather_sub':  { en: 'Light shower after midnight', zh: '半夜過後可能短暫陣雨' },
+  // Day-2..5 stairwell neighbours — a different face checks in on the player
+  // each evening as they thunder downstairs. Names + lines are kept short so
+  // they fit a single speech bubble.
+  'apt.neighbor_d2_name': { en: 'Auntie next door', zh: '隔壁阿姨' },
+  'apt.neighbor_d2_line': { en: 'Slow down, you tripping?', zh: '急什麼？慢慢走啦！' },
+  'apt.neighbor_d3_name': { en: 'Old Mr. Lin',      zh: '林伯伯' },
+  'apt.neighbor_d3_line': { en: 'Careful — wet steps tonight.', zh: '下雨樓梯滑，慢點。' },
+  'apt.neighbor_d4_name': { en: 'Little Mei',       zh: '小美妹妹' },
+  'apt.neighbor_d4_line': { en: 'Big bro, run run run!', zh: '哥哥跑跑跑！' },
+  'apt.neighbor_d5_name': { en: 'Uncle from 3F',    zh: '三樓阿伯' },
+  'apt.neighbor_d5_line': { en: 'Last day, kid. Got it covered?', zh: '今天最後一天囉，加油啦！' },
   'apt.stairwell_caption': {
     en: 'down five flights — concrete + Für Elise echoing up',
     zh: '老公寓五樓走下去 — 給愛麗絲從樓下飄上來',

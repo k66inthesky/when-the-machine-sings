@@ -278,8 +278,21 @@ export default class ApartmentScene extends Phaser.Scene {
     }
   }
 
+  // Throttle gate. keydown auto-repeats when a key is held; without this the
+  // player could pin E or T and farm slack at ~60/sec. 220ms cooldown caps
+  // realistic spam at ~4 taps/sec — fast enough to feel responsive on a real
+  // tap, slow enough that holding the key isn't a free win.
+  canSlack() {
+    const now = this.time.now;
+    if (now - (this._lastSlackAt || 0) < 220) return false;
+    this._lastSlackAt = now;
+    return true;
+  }
+
   scrollPhone() {
     if (this.left) return;
+    if (!this.canSlack()) return;
+    this.dismissTvOverlay(); // mutually exclusive with TV
     this.bumpSlack(2);
     Sfx.scroll(this);
     this.tweens.add({
@@ -293,6 +306,8 @@ export default class ApartmentScene extends Phaser.Scene {
 
   toggleTv() {
     if (this.left) return;
+    if (!this.canSlack()) return;
+    this.dismissPhoneOverlay(); // mutually exclusive with phone
     this.bumpSlack(1);
     Sfx.static(this);
     this.tweens.add({
@@ -302,6 +317,24 @@ export default class ApartmentScene extends Phaser.Scene {
       yoyo: true,
     });
     this.showTvOverlay();
+  }
+
+  dismissPhoneOverlay() {
+    if (this.phoneOverlay && this.phoneOverlay.active) {
+      const c = this.phoneOverlay;
+      this.phoneOverlay = null;
+      this.tweens.killTweensOf(c);
+      c.destroy();
+    }
+  }
+
+  dismissTvOverlay() {
+    if (this.tvOverlay && this.tvOverlay.active) {
+      const c = this.tvOverlay;
+      this.tvOverlay = null;
+      this.tweens.killTweensOf(c);
+      c.destroy();
+    }
   }
 
   // Procedural phone screen — vertical mock feed (avatar dots + caption stripes)
@@ -432,61 +465,27 @@ export default class ApartmentScene extends Phaser.Scene {
   }
 
   // Taipei old-公寓 stairwell vignette before the player drops to the street.
-  // Prefers the AI-painted bg-stairwell PNG; falls back to a procedural draw
-  // (concrete walls, mosaic steps, rusty handrail, flickering tube, mailboxes,
-  // scooter shadow) so the moment still lands even if the asset is missing.
+  // Procedural draw only now — the cluttered painted PNG was retired in favour
+  // of this cleaner version: bare concrete walls, mosaic steps, handrail, no
+  // scooter or mailbox piles. Day 2-5 add a neighbour encounter on the steps.
   showStairwellTransition(onDone) {
     const w = GAME_WIDTH, h = GAME_HEIGHT;
     const c = this.add.container(0, 0).setDepth(2000);
-    if (this.textures.exists('bg-stairwell')) {
-      c.add(this.add.image(w / 2, h / 2, 'bg-stairwell').setDisplaySize(w, h));
-      c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.18).setOrigin(0));
-      // Caption + footsteps + fade — same envelope as the procedural path.
-      const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
-        fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
-        stroke: '#000', strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(2001);
-      Sfx.step(this);
-      this.time.delayedCall(180, () => Sfx.step(this));
-      this.time.delayedCall(360, () => Sfx.step(this));
-      c.setAlpha(0); cap.setAlpha(0);
-      this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
-      this.time.delayedCall(1100, () => {
-        this.tweens.add({
-          targets: [c, cap], alpha: 0, duration: 260,
-          onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
-        });
-      });
-      return;
-    }
     // Block out the whole frame
     c.add(this.add.rectangle(0, 0, w, h, 0x0a0a0e).setOrigin(0));
-    // Walls — gradient-ish bands of concrete grey-green
+    // Walls — clean concrete, no stains/cracks (per "沒雜物" brief)
     c.add(this.add.rectangle(0, 0, w, h, 0x2a2820).setOrigin(0));
-    c.add(this.add.rectangle(0, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
-    c.add(this.add.rectangle(w * 0.70, 0, w * 0.30, h, 0x1a1812).setOrigin(0));
-    // Wall stains (random ochre/grey patches)
-    for (let i = 0; i < 14; i++) {
-      const px = Phaser.Math.Between(40, w - 40);
-      const py = Phaser.Math.Between(40, h * 0.6);
-      const pw = Phaser.Math.Between(16, 60);
-      const ph = Phaser.Math.Between(8, 30);
-      const tone = [0x3a3025, 0x4a3a28, 0x2a221a][i % 3];
-      c.add(this.add.rectangle(px, py, pw, ph, tone, 0.45));
-    }
-    // Cracks (thin diagonal lines)
-    for (let i = 0; i < 5; i++) {
-      const x1 = Phaser.Math.Between(0, w);
-      const y1 = Phaser.Math.Between(20, h * 0.5);
-      const x2 = x1 + Phaser.Math.Between(-40, 40);
-      const y2 = y1 + Phaser.Math.Between(40, 100);
-      c.add(this.add.line(0, 0, x1, y1, x2, y2, 0x0a0808, 0.6).setOrigin(0).setLineWidth(1));
-    }
-    // Ceiling tube light (flickers)
+    c.add(this.add.rectangle(0, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
+    c.add(this.add.rectangle(w * 0.72, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
+    // A single subtle horizontal trim line on each wall — gives the concrete
+    // a stairwell feel without piling on grime.
+    c.add(this.add.line(0, 0, 0, h * 0.35, w * 0.28, h * 0.35, 0x3a3028, 0.6).setOrigin(0).setLineWidth(1));
+    c.add(this.add.line(0, 0, w * 0.72, h * 0.35, w, h * 0.35, 0x3a3028, 0.6).setOrigin(0).setLineWidth(1));
+    // Ceiling tube light (flickers briefly)
     const ceil = this.add.rectangle(w / 2, 28, 200, 14, 0x3a3a30).setStrokeStyle(1, 0x1a1a14);
     const tube = this.add.rectangle(w / 2, 28, 180, 6, 0xfff4cc, 0.95);
     c.add(ceil); c.add(tube);
-    this.tweens.add({ targets: tube, alpha: 0.55, duration: 90, yoyo: true, repeat: 8 });
+    this.tweens.add({ targets: tube, alpha: 0.6, duration: 110, yoyo: true, repeat: 4 });
     // Light cone
     const cone = this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0);
     c.add(cone);
@@ -497,26 +496,21 @@ export default class ApartmentScene extends Phaser.Scene {
     for (let i = 0; i < stepCount; i++) {
       const t = i / stepCount;
       const tn = (i + 1) / stepCount;
-      // y on screen
       const y0 = vy + (h - vy) * Math.pow(t, 1.4);
       const y1 = vy + (h - vy) * Math.pow(tn, 1.4);
-      // half-width at this depth
       const hw0 = (w * 0.5 - 60) * Math.pow(tn, 0.85) + 40;
       const hw1 = (w * 0.5 - 60) * Math.pow(t, 0.85) + 40;
-      // Tread (top face)
       const tread = this.add.polygon(0, 0, [
         vx - hw1, y0, vx + hw1, y0,
         vx + hw0, y1, vx - hw0, y1,
       ], 0x9a8a70, 0.95).setOrigin(0);
       tread.setStrokeStyle(1, 0x4a3a28, 0.8);
       c.add(tread);
-      // Riser front (small dark band just above)
       const riser = this.add.polygon(0, 0, [
         vx - hw1, y0 - 6, vx + hw1, y0 - 6,
         vx + hw1, y0, vx - hw1, y0,
       ], 0x3a2a22, 0.95).setOrigin(0);
       c.add(riser);
-      // Mosaic dots on the tread
       const dots = 8 - i;
       for (let d = -dots; d <= dots; d++) {
         const dx = vx + (hw0 * d / (dots + 1));
@@ -524,48 +518,128 @@ export default class ApartmentScene extends Phaser.Scene {
         c.add(this.add.circle(dx, dy, 1.5 + (1 - t) * 1.5, 0x6a5a40, 0.55));
       }
     }
-    // Right-side handrail — three vertical posts + a sloped rail
-    for (let i = 0; i < 3; i++) {
-      const t = i / 3;
-      const tn = (i + 0.5) / 3;
-      const x = w / 2 + (w * 0.5 - 60) * Math.pow(tn, 0.85) + 30;
-      const y0 = vy + (h - vy) * Math.pow(tn, 1.4);
-      c.add(this.add.rectangle(x, y0, 4, 50, 0x6a4a30).setOrigin(0.5, 1));
-    }
-    c.add(this.add.line(0, 0, w / 2 + 60, vy + 6, w - 30, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
-    // Mailboxes on left wall — small grid of metal squares
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 2; col++) {
-        const mx = 36 + col * 26;
-        const my = h * 0.30 + row * 36;
-        c.add(this.add.rectangle(mx, my, 22, 30, 0x3a4050).setStrokeStyle(1, 0x6a7080));
-        c.add(this.add.rectangle(mx, my + 8, 12, 1, 0x1a1a1a));
-        c.add(this.add.circle(mx + 6, my - 6, 1.5, 0xe8b96a));
+    // Both-side handrails — slim wood rails along the descent
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const tn = (i + 0.5) / 3;
+        const x = w / 2 + side * ((w * 0.5 - 60) * Math.pow(tn, 0.85) + 30);
+        const y0 = vy + (h - vy) * Math.pow(tn, 1.4);
+        c.add(this.add.rectangle(x, y0, 4, 50, 0x6a4a30).setOrigin(0.5, 1));
       }
+      const railX1 = w / 2 + side * 60;
+      const railX2 = side > 0 ? w - 30 : 30;
+      c.add(this.add.line(0, 0, railX1, vy + 6, railX2, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
     }
-    // Shadowed scooter silhouette bottom-left (just a hint)
-    c.add(this.add.rectangle(70, h - 24, 80, 20, 0x0a0a0e, 0.85));
-    c.add(this.add.circle(50, h - 14, 10, 0x0a0a0e, 0.85));
-    c.add(this.add.circle(110, h - 14, 10, 0x0a0a0e, 0.85));
-    // Caption
-    const cap = this.add.text(w / 2, h - 50, I18n.t('apt.stairwell_caption'), {
-      fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
-      stroke: '#000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(2001);
+
+    // Day 2-5: a neighbour standing on the upper step says hi. Day 1 keeps
+    // the empty stairwell to underline how alone the player started out.
+    let neighborCleanup = () => {};
+    if (this.level.day >= 2) {
+      neighborCleanup = this.drawStairwellNeighbor(c, this.level.day);
+    }
+
+    // Caption — only on day 1 (the empty-stairwell day). On neighbour days
+    // the speech bubble itself is the caption.
+    let cap = null;
+    if (this.level.day === 1) {
+      cap = this.add.text(w / 2, h - 40, I18n.t('apt.stairwell_caption'), {
+        fontFamily: 'serif', fontSize: '15px', color: '#e8dccb', fontStyle: 'italic',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(2001);
+    }
+
     // Footstep echo
     Sfx.step(this);
     this.time.delayedCall(180, () => Sfx.step(this));
     this.time.delayedCall(360, () => Sfx.step(this));
-    // Fade in fast, hold, then fade out + done.
-    c.setAlpha(0);
-    cap.setAlpha(0);
-    this.tweens.add({ targets: [c, cap], alpha: 1, duration: 220 });
-    this.time.delayedCall(1100, () => {
+
+    // Fade envelope. Neighbour days hold ~700ms longer so the player can read.
+    const hold = this.level.day === 1 ? 1100 : 1900;
+    const targets = cap ? [c, cap] : [c];
+    c.setAlpha(0); if (cap) cap.setAlpha(0);
+    this.tweens.add({ targets, alpha: 1, duration: 220 });
+    this.time.delayedCall(hold, () => {
       this.tweens.add({
-        targets: [c, cap], alpha: 0, duration: 260,
-        onComplete: () => { c.destroy(); cap.destroy(); onDone && onDone(); },
+        targets, alpha: 0, duration: 260,
+        onComplete: () => {
+          c.destroy(); if (cap) cap.destroy();
+          neighborCleanup();
+          onDone && onDone();
+        },
       });
     });
+  }
+
+  // Adds a small neighbour silhouette + speech bubble to the stairwell
+  // container. Returns a cleanup function (currently no-op since everything
+  // lives inside the container's destroy chain, but keeps the contract open).
+  drawStairwellNeighbor(c, day) {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    // Stand the neighbour on the upper-right portion of the staircase so they
+    // don't block the central vanishing point.
+    const nx = w * 0.62;
+    const ny = h * 0.66;
+    // Each day picks a different silhouette + tone.
+    const presets = {
+      2: { kind: 'auntie',   bodyColor: 0xb0506a, headColor: 0xf2c79a, hatColor: 0x2a1820 },
+      3: { kind: 'uncle',    bodyColor: 0x4a5a70, headColor: 0xe8b890, hatColor: 0x3a2820, prop: 'umbrella' },
+      4: { kind: 'kid',      bodyColor: 0xe8b96a, headColor: 0xf2c79a, hatColor: null },
+      5: { kind: 'old_man',  bodyColor: 0x6a5a4a, headColor: 0xe8b890, hatColor: 0x2a1810, prop: 'cane' },
+    };
+    const p = presets[day] || presets[2];
+    const s = p.kind === 'kid' ? 0.78 : 1.0;
+    // Body (torso)
+    c.add(this.add.rectangle(nx, ny + 14 * s, 22 * s, 38 * s, p.bodyColor));
+    // Pants
+    c.add(this.add.rectangle(nx - 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    c.add(this.add.rectangle(nx + 5 * s, ny + 36 * s, 8 * s, 18 * s, 0x2a1f1a));
+    // Arms (one slightly raised in a wave)
+    c.add(this.add.rectangle(nx - 14 * s, ny + 12 * s, 5 * s, 22 * s, p.bodyColor));
+    c.add(this.add.rectangle(nx + 14 * s, ny + 4 * s,  5 * s, 22 * s, p.bodyColor).setRotation(-0.35));
+    // Head
+    c.add(this.add.circle(nx, ny - 12 * s, 9 * s, p.headColor));
+    // Hair / hat
+    if (p.hatColor) {
+      c.add(this.add.rectangle(nx, ny - 18 * s, 18 * s, 5 * s, p.hatColor));
+    }
+    // Eyes (dot pair)
+    c.add(this.add.circle(nx - 3 * s, ny - 12 * s, 1.2, 0x101010));
+    c.add(this.add.circle(nx + 3 * s, ny - 12 * s, 1.2, 0x101010));
+    // Optional prop
+    if (p.prop === 'umbrella') {
+      c.add(this.add.arc(nx + 22 * s, ny - 4 * s, 16 * s, 180, 360, false, 0x2a4060));
+      c.add(this.add.rectangle(nx + 22 * s, ny + 8 * s, 2, 24 * s, 0x6a4a30));
+    } else if (p.prop === 'cane') {
+      c.add(this.add.line(0, 0, nx + 14 * s, ny + 4 * s, nx + 22 * s, ny + 38 * s, 0x6a4a30).setLineWidth(2));
+    }
+
+    // Speech bubble — name above, line in the bubble. Bubble points down-left
+    // toward the neighbour's mouth.
+    const name = I18n.t(`apt.neighbor_d${day}_name`);
+    const line = I18n.t(`apt.neighbor_d${day}_line`);
+    const padX = 14, padY = 8;
+    const bubbleY = ny - 70;
+    // Measure roughly via temporary text
+    const tmp = this.add.text(0, 0, line, { fontFamily: 'serif', fontSize: '14px' }).setVisible(false);
+    const bw = Math.min(260, Math.max(120, tmp.width + padX * 2));
+    tmp.destroy();
+    const bx = Math.min(w - bw / 2 - 12, nx - 30);
+    const bubbleBg = this.add.rectangle(bx, bubbleY, bw, 50, 0xfdfcf2, 0.96).setStrokeStyle(2, 0x1a1a1a, 0.85);
+    const bubbleTail = this.add.triangle(0, 0,
+      bx + 30, bubbleY + 24,
+      bx + 46, bubbleY + 24,
+      nx - 4, ny - 18,
+      0xfdfcf2, 0.96
+    ).setOrigin(0);
+    c.add(bubbleBg); c.add(bubbleTail);
+    c.add(this.add.text(bx, bubbleY - 8, name, {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#8a5a30',
+    }).setOrigin(0.5));
+    c.add(this.add.text(bx, bubbleY + 8, line, {
+      fontFamily: 'serif', fontSize: '14px', color: '#1a1a1a',
+    }).setOrigin(0.5));
+
+    return () => {};
   }
 
   scheduleNotifications() {

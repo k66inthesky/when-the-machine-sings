@@ -290,13 +290,20 @@ export default class StreetScene extends Phaser.Scene {
 
   throwBag() {
     if (this.finished || this.throwLocked) return;
-    if (this.bagsThrown >= this.level.bagCount) return;
+    // Stop only when the player has actually hit enough bags. Day-1 used to
+    // gate on bagsThrown which gave the player exactly one chance per day —
+    // miss the timing and the level was unwinnable. Now they can keep throwing
+    // (cooldown via throwLocked) until they hit the required count.
+    if (this.bagsHit >= this.level.bagCount) return;
     this.throwLocked = true;
     this.bagsThrown += 1;
     Sfx.throw(this);
 
+    // Day 1 gets a more forgiving hitbox so the very first throw isn't a
+    // pixel-precision test before the player has internalised the timing.
     const dx = Math.abs(this.truck.x - this.player.x);
-    const hit = dx < 90; // generous hitbox; dx<50 is "perfect" which could grant bonus later
+    const hitDist = this.level.day === 1 ? 120 : 90;
+    const hit = dx < hitDist;
 
     const bag = this.add.rectangle(this.player.x + 10, this.player.y - 10, 12, 16, 0xe8c850).setStrokeStyle(1, 0x805520);
 

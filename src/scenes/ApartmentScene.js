@@ -123,9 +123,9 @@ export default class ApartmentScene extends Phaser.Scene {
     // Each gets a small procedural pictogram on the left so the action reads at
     // a glance even when the user can't make out the small label text.
     const buttonDefs = [
-      { label: I18n.t('apt.btn_phone'), x: w / 2 - 180, icon: 'phone', action: () => this.scrollPhone() },
-      { label: I18n.t('apt.btn_tv'),    x: w / 2,       icon: 'tv',    action: () => this.toggleTv() },
-      { label: I18n.t('apt.btn_go'),    x: w / 2 + 180, icon: 'stairs', action: () => this.leaveForTruck() },
+      { label: I18n.t('apt.btn_phone'), x: w / 2 - 180, action: () => this.scrollPhone() },
+      { label: I18n.t('apt.btn_tv'),    x: w / 2,       action: () => this.toggleTv() },
+      { label: I18n.t('apt.btn_go'),    x: w / 2 + 180, action: () => this.leaveForTruck() },
     ];
     buttonDefs.forEach((b) => {
       const bg = this.add.rectangle(b.x, h - 18, 130, 36, 0x1a1a2a, 0.78)

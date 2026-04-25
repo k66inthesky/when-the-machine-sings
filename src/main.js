@@ -64,9 +64,13 @@ const game = new Phaser.Game(config);
 // itself is already global — this just hands back the instance.
 window.__PHASER_GAME__ = game;
 
-// Respect YouTube's mute button in the Playables container. Outside YT
-// this is a no-op (the adapter returns isAudioEnabled=true + an empty
-// unsubscribe) so the M-key handler below remains the only mute path.
+// Respect YouTube's mute button in the Playables container ONLY. Outside
+// YT, do nothing — the M-key handler below is the sole mute path. This
+// gate fixes a bug where some browsers mid-load saw the YT SDK script
+// with isAudioEnabled() falsy (no user gesture yet, or audio policy
+// uncertain) and the previous unconditional applyYtAudioState() pinned
+// game.sound.mute = true on Day 1 entry. Players reported "audio is
+// muted by default; pressing M unmutes" — that was the regression.
 const applyYtAudioState = (enabled) => {
   game.sound.mute = !enabled;
   const ctx = game.sound.context;
@@ -75,8 +79,14 @@ const applyYtAudioState = (enabled) => {
     else if (enabled && ctx.state === 'suspended') ctx.resume().catch(() => {});
   }
 };
-applyYtAudioState(Playables.isAudioEnabled());
-Playables.onAudioEnabledChange(applyYtAudioState);
+if (Playables.inEnv()) {
+  applyYtAudioState(Playables.isAudioEnabled());
+  Playables.onAudioEnabledChange(applyYtAudioState);
+} else {
+  // Belt-and-braces: explicitly unmute on every non-YT host so a stray
+  // Phaser default or stale SDK state can't leave the player silent.
+  game.sound.mute = false;
+}
 
 // YT Playables onPause / onResume: MUST freeze all execution (game loop,
 // music, interactions, network, rendering) and resume cleanly.

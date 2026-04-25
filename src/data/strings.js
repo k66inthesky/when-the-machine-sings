@@ -162,9 +162,12 @@ export const STRINGS = {
                             zh: '公園的鳳凰樹終於開花了，好看。' },
   'apt.chen_info_5':     { en: '5F Huang\'s grandkids drove down — first time in months.',
                             zh: '五樓黃爺爺的孫子下來了，幾個月不見囉。' },
-  // Common UI for the choice prompt
-  'apt.choice_y':        { en: 'Y', zh: 'Y' },
-  'apt.choice_n':        { en: 'N', zh: 'N' },
+  // Common UI for the encounter prompt
+  'apt.nb_press_e_window': {
+    en: 'press E within 2s — or just walk past',
+    zh: '2 秒內按 E 互動 — 否則直接走過',
+  },
+  'apt.nb_walk_past':    { en: 'walked past', zh: '走過去了' },
   // Mom commentary — appended on the result screen when encounter flags set
   'apt.mom_zhang_scold': { en: '...didn\'t I tell you to stop letting Zhang yap your ear off?',
                             zh: '⋯不是叫你少跟張阿姨聊八卦嗎？' },
@@ -429,24 +432,24 @@ export const STRINGS = {
   },
   'ending.credits.body': {
     en: [
-      'A game by k66 — Gamedev.js Jam 2026',
-      'Theme: Machines',
+      'Author: k66 (X: @k66inthesky)',
+      'Gamedev.js Jam 2026 — Theme: Machines',
       '',
       'Music inspired by "Für Elise" — Ludwig van Beethoven',
       'Based on real Taipei news, 2024–2026',
       '',
       'Made with Phaser 3, Vite, WebAudio, and a lot of coffee.',
-      '獻給所有在傍晚跑過巷子的人。',
+      'Have you ever chased a garbage truck? Hope you enjoyed the story.',
     ],
     zh: [
-      '一款 k66 的遊戲 — Gamedev.js Jam 2026',
-      '主題：機器',
+      '作者：k66（X: @k66inthesky）',
+      'Gamedev.js Jam 2026 — 主題：機器',
       '',
       '音樂靈感來自〈給愛麗絲〉 — 貝多芬',
       '取自台北市 2024–2026 年真實新聞',
       '',
       '用 Phaser 3、Vite、WebAudio 與大量咖啡製作。',
-      '獻給所有在傍晚跑過巷子的人。',
+      '大家有追過垃圾車嗎？希望你們會喜歡這個故事。',
     ],
   },
   'ending.grade_perfect':  { en: 'Perfect week',   zh: '滿分的一週' },

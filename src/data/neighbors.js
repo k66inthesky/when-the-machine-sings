@@ -1,5 +1,7 @@
-// Stairwell neighbour pool. Four named characters, each appears exactly once
-// across days 2-5 in a randomised order. Choices in the stairwell set
+// Stairwell neighbour pool. Four named characters; each stairwell day picks
+// one INDEPENDENTLY at random, so the same neighbour can show up on multiple
+// days within the same week. Per-day picks are cached in the registry so
+// the choice is stable across scene re-entry within that day. Choices set
 // registry flags that ResultScene + EndingScene read later for deferred
 // consequences (mom commentary, matchmaking insert, etc.).
 
@@ -63,27 +65,18 @@ export const CHEN_INFO_KEYS = [
   'apt.chen_info_5',
 ];
 
-// Picks (or recalls) the week-long shuffle of D2-D5 neighbours from the
-// Phaser registry, so each appears exactly once and the order survives
-// scene transitions within the same run.
-export function getWeekNeighborOrder(registry) {
-  let order = registry.get('weekNeighborOrder');
-  if (!Array.isArray(order) || order.length !== 4) {
-    order = [...NEIGHBOR_KINDS];
-    // Fisher-Yates shuffle.
-    for (let i = order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [order[i], order[j]] = [order[j], order[i]];
-    }
-    registry.set('weekNeighborOrder', order);
-  }
-  return order;
-}
-
+// Picks the neighbour for a given day. First call rolls a fresh random kind
+// from the pool (repeats across days are fine — meeting the same auntie twice
+// is realistic for a small 公寓). Subsequent calls within the same day return
+// the cached value, so re-rendering the stairwell doesn't re-roll.
 export function getNeighborForDay(registry, day) {
   if (day < 2 || day > 5) return null;
-  const order = getWeekNeighborOrder(registry);
-  const kind = order[day - 2];
+  const cacheKey = `neighborKindD${day}`;
+  let kind = registry.get(cacheKey);
+  if (!kind || !NEIGHBORS[kind]) {
+    kind = NEIGHBOR_KINDS[Math.floor(Math.random() * NEIGHBOR_KINDS.length)];
+    registry.set(cacheKey, kind);
+  }
   return { kind, ...NEIGHBORS[kind] };
 }
 

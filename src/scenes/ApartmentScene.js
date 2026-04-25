@@ -21,11 +21,11 @@ export default class ApartmentScene extends Phaser.Scene {
     this.elapsed = 0;
     this.left = false;
     // Day 1 = a fresh week — wipe last week's stairwell encounter flags +
-    // randomised neighbour order so each run feels distinct.
+    // per-day neighbour rolls so each run feels distinct.
     if (this.level.day === 1) {
-      this.registry.set('weekNeighborOrder', null);
       this.registry.set('chenInfoKeyChosen', null);
       for (let d = 2; d <= 5; d++) {
+        this.registry.set(`neighborKindD${d}`, null);
         this.registry.set(`encounter_d${d}_kind`, null);
         this.registry.set(`encounter_d${d}_engaged`, null);
       }
@@ -586,30 +586,38 @@ export default class ApartmentScene extends Phaser.Scene {
     this.runStairwellEncounter(c, neighbor, onDone);
   }
 
-  // Builds the neighbour silhouette + speech bubble + Y/N choice prompt and
-  // waits for the player's answer (or auto-defaults to N after a timeout).
-  // Sets registry flags + invokes onDone with {forfeit} when done.
+  // Builds the neighbour silhouette + speech bubble + a 2-second [E] window.
+  // If the player presses E (or taps the prompt) inside the window, they
+  // engage. If the timer runs out, they walk past — no consequence. Way
+  // less menu-heavy than the prior Y/N card.
   runStairwellEncounter(c, neighbor, onDone) {
     const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const WINDOW_MS = 2000;
 
     this.drawStairwellNeighborFigure(c, neighbor);
     const bubbleLine = this.drawNeighborBubble(c, neighbor, I18n.t(neighbor.opener));
 
-    // Y/N choice card
+    // [E] prompt card with a thin shrinking timer bar so the 2s window is
+    // visible. Pressing E (or clicking) inside the window engages.
     const card = this.add.container(w / 2, h - 60).setDepth(2002);
     const cardBg = this.add.rectangle(0, 0, 460, 60, 0x0a0a14, 0.93)
       .setStrokeStyle(2, 0xe8b96a, 0.85);
-    card.add(cardBg);
-    const yLabel = this.add.text(-110, 0, `[Y] ${I18n.t(neighbor.yes)}`, {
+    const promptTxt = this.add.text(0, -8, `[E] ${I18n.t(neighbor.yes)}`, {
       fontFamily: 'sans-serif', fontSize: '15px', color: '#6affaa', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const nLabel = this.add.text(120, 0, `[N] ${I18n.t(neighbor.no)}`, {
-      fontFamily: 'sans-serif', fontSize: '15px', color: '#aac0d0',
+    const subTxt = this.add.text(0, 12, I18n.t('apt.nb_press_e_window'), {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#9aa0a8',
     }).setOrigin(0.5);
-    card.add([yLabel, nLabel]);
+    const timerBg = this.add.rectangle(-200, 22, 400, 4, 0x102030).setOrigin(0, 0.5);
+    const timerBar = this.add.rectangle(-200 + 1, 22, 398, 3, 0x6affaa).setOrigin(0, 0.5);
+    card.add([cardBg, promptTxt, subTxt, timerBg, timerBar]);
 
     c.setAlpha(0); card.setAlpha(0);
     this.tweens.add({ targets: [c, card], alpha: 1, duration: 220 });
+    // Drain the timer bar to 0 over WINDOW_MS — visual countdown.
+    this.tweens.add({
+      targets: timerBar, scaleX: 0, duration: WINDOW_MS, ease: 'Linear',
+    });
 
     let resolved = false;
     const finish = (engaged) => {
@@ -630,11 +638,9 @@ export default class ApartmentScene extends Phaser.Scene {
       } else {
         bubbleLine.setText('⋯');
       }
-      // Replace choice card with a brief confirmation. removeAll(true)
-      // destroys + clears in one pass, avoiding the live-list iteration bug
-      // forEach + destroy() runs into.
+      // Swap the prompt card for a brief acknowledgement.
       card.removeAll(true);
-      const ackTxt = engaged ? I18n.t(neighbor.yes) : I18n.t(neighbor.no);
+      const ackTxt = engaged ? I18n.t(neighbor.yes) : I18n.t('apt.nb_walk_past');
       card.add(this.add.rectangle(0, 0, 320, 36, 0x0a0a14, 0.92).setStrokeStyle(1, 0x4a4a30, 0.7));
       card.add(this.add.text(0, 0, ackTxt, {
         fontFamily: 'serif', fontSize: '16px', color: engaged ? '#6affaa' : '#aac0d0',
@@ -642,7 +648,7 @@ export default class ApartmentScene extends Phaser.Scene {
       }).setOrigin(0.5));
 
       // 陳奶奶 engagement holds longer so the info line reads.
-      const hold = (engaged && neighbor.kind === 'chen') ? 2400 : 1300;
+      const hold = (engaged && neighbor.kind === 'chen') ? 2400 : 1100;
       this.time.delayedCall(hold, () => {
         this.tweens.add({
           targets: [c, card], alpha: 0, duration: 260,
@@ -654,19 +660,19 @@ export default class ApartmentScene extends Phaser.Scene {
       });
     };
 
+    // Press E inside the 2s window = engage. Anything else (or the timer
+    // expiring) = walk past.
     const keyHandler = (e) => {
       if (resolved) return;
-      const k = e.code;
-      if (k === 'KeyY' || k === 'Space' || k === 'Enter') finish(true);
-      else if (k === 'KeyN' || k === 'Escape') finish(false);
+      if (e && e.repeat) return; // ignore browser key auto-repeat
+      if (e.code === 'KeyE') finish(true);
     };
     this.input.keyboard.on('keydown', keyHandler);
-    yLabel.setInteractive({ useHandCursor: true })
+    promptTxt.setInteractive({ useHandCursor: true })
       .on('pointerdown', () => finish(true));
-    nLabel.setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => finish(false));
-    // Auto-default to N after 6s so the player can't soft-lock if they idle.
-    this.time.delayedCall(6000, () => finish(false));
+    cardBg.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => finish(true));
+    this.time.delayedCall(WINDOW_MS, () => finish(false));
     this.events.once('shutdown', () => {
       this.input.keyboard.off('keydown', keyHandler);
     });

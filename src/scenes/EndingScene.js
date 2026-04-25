@@ -26,7 +26,7 @@ const ACT_KEYS = [
 // Optional act inserted after Act III only if the player greeted 高小姐 in
 // the stairwell at any point during the week. Mom's matchmaking reveal is
 // week-end material — too big to land on a per-day result screen.
-const GAO_ACT = { kind: 'text', title: 'ending.gao.title', body: 'ending.gao.body' };
+const GAO_ACT = { kind: 'vignette', title: 'ending.gao.title', body: 'ending.gao.body', vignette: 'matchmaking' };
 
 function checkGreetedGao(registry) {
   for (let d = 2; d <= 5; d++) {
@@ -209,6 +209,7 @@ export default class EndingScene extends Phaser.Scene {
     if (id === 'leniency')      return this.vignetteLeniency(cx, cy);
     if (id === 'interview_still') return this.vignetteInterview(cx, cy, false);
     if (id === 'sun_after_rain')  return this.vignetteSunAfterRain(cx, cy);
+    if (id === 'matchmaking')     return this.vignetteMatchmaking(cx, cy);
   }
 
   // Reusable: draws a small standing person silhouette centred on (x, y).
@@ -384,9 +385,14 @@ export default class EndingScene extends Phaser.Scene {
   }
 
   vignetteNetizens(cx, cy) {
-    // Dark "screen" backdrop with floating comment bubbles + hearts
-    this.add.rectangle(cx, cy, 520, 220, 0x141828).setStrokeStyle(2, 0x6acfff, 0.5);
-    // Scrolling comment bubbles
+    // "Comment feed" panel — fixed inner column laid out vertically so text
+    // can wrap to a second line without escaping the frame. Each row gets a
+    // tiny avatar silhouette to the left so the netizen-as-person reading is
+    // explicit (the prior pass scattered comments freely and long Chinese
+    // lines spilled past the border).
+    const frameW = 520, frameH = 230;
+    this.add.rectangle(cx, cy, frameW, frameH, 0x141828).setStrokeStyle(2, 0x6acfff, 0.5);
+
     const comments = [
       I18n.t('ending.netizen_c1'),
       I18n.t('ending.netizen_c2'),
@@ -394,26 +400,44 @@ export default class EndingScene extends Phaser.Scene {
       I18n.t('ending.netizen_c4'),
       I18n.t('ending.netizen_c5'),
     ];
-    const positions = [
-      { x: cx - 140, y: cy - 70 },
-      { x: cx + 100, y: cy - 30 },
-      { x: cx - 110, y: cy + 10 },
-      { x: cx + 130, y: cy + 50 },
-      { x: cx - 60,  y: cy + 80 },
-    ];
+
+    // Inner padding from the frame edge.
+    const padX = 16, padY = 18;
+    const innerL = cx - frameW / 2 + padX;
+    const innerR = cx + frameW / 2 - padX;
+    const innerT = cy - frameH / 2 + padY;
+    const rowH   = (frameH - padY * 2) / comments.length;
+    const avatarW = 22;
+    const textL  = innerL + avatarW + 8;
+    const textW  = innerR - textL;
+
+    const avatarColors = [0xff9aa8, 0x9accff, 0xffd28a, 0xc8a8e8, 0x9affc8];
+
     comments.forEach((txt, i) => {
-      const p = positions[i];
-      const t = this.add.text(p.x, p.y, txt, {
+      const rowY = innerT + rowH * (i + 0.5);
+      // Avatar — circle head + shoulder block, all clipped well inside frame.
+      const ax = innerL + avatarW / 2;
+      this.add.circle(ax, rowY - 4, 7, avatarColors[i % avatarColors.length])
+        .setStrokeStyle(1, 0x0a0a0f, 0.6);
+      this.add.rectangle(ax, rowY + 8, 16, 10, avatarColors[i % avatarColors.length])
+        .setStrokeStyle(1, 0x0a0a0f, 0.6);
+
+      // Comment text — origin (0, 0.5) so left-aligned at textL; wordWrap
+      // forces multi-line for long Chinese lines so nothing escapes textW.
+      const t = this.add.text(textL, rowY, txt, {
         fontFamily: 'sans-serif', fontSize: '13px', color: '#e8dccb',
-        backgroundColor: 'rgba(28,38,72,0.85)', padding: { x: 8, y: 4 },
-      }).setOrigin(0.5);
-      this.tweens.add({ targets: t, y: p.y - 4, duration: 1200 + i * 200, yoyo: true, repeat: -1 });
+        wordWrap: { width: textW, useAdvancedWrap: true },
+        lineSpacing: 2,
+      }).setOrigin(0, 0.5);
+      // Subtle bob to keep the feed feeling alive.
+      this.tweens.add({ targets: t, y: rowY - 2, duration: 1200 + i * 200, yoyo: true, repeat: -1 });
     });
-    // Heart icons
-    for (let i = 0; i < 8; i++) {
-      const hx = cx - 220 + (i * 60) % 480;
-      const hy = cy - 80 + Math.floor(i / 4) * 160;
-      this.drawHeart(hx, hy, 5, 0xff6b8a);
+
+    // A few hearts down the right edge — clamped well inside the frame.
+    for (let i = 0; i < 4; i++) {
+      const hx = innerR - 8;
+      const hy = innerT + 14 + i * (rowH * 0.95);
+      this.drawHeart(hx, hy, 4.5, 0xff6b8a);
     }
   }
 
@@ -447,6 +471,80 @@ export default class EndingScene extends Phaser.Scene {
   // bands, faint rainbow arc, fluffy clouds, sun rays piercing through, then
   // a small Taipei-orange truck silhouette tracking left-to-right along the
   // road below. No text — the act3 body lines render as caption.
+  // Mom-tells-you-she-arranged-a-date vignette. Same dim-living-room backdrop
+  // family as Act II vignettes (so it doesn't pop visually) but populated with
+  // a smiling mom on the left + a shy "you" on the right, with a small heart
+  // floating between them and a sweat-bead on the player's head.
+  vignetteMatchmaking(cx, cy) {
+    // Subtle warm wall + floor band so the figures stand on something
+    this.add.rectangle(cx, cy - 30, 360, 140, 0x2a2030, 0.85);
+    this.add.rectangle(cx, cy + 50, 360, 24, 0x4a3a30, 0.9);
+    // Wall hint — picture frame
+    this.add.rectangle(cx - 130, cy - 80, 38, 48, 0x6a4a30).setStrokeStyle(2, 0x4a3018);
+    this.add.rectangle(cx - 130, cy - 80, 30, 40, 0xe8dccb);
+    // A soft heart drifting between the two figures.
+    this.drawHeart(cx, cy - 30, 9, 0xff6b8a);
+    this.add.text(cx, cy - 50, '♡', {
+      fontFamily: 'serif', fontSize: '14px', color: '#ff9ab0',
+    }).setOrigin(0.5);
+
+    // Mom on the left — facing right, smiling, hands clasped.
+    const mx = cx - 70;
+    const my = cy + 8;
+    this.add.rectangle(mx, my + 14, 30, 42, 0x6a3a4a); // floral top
+    this.add.rectangle(mx - 8, my + 38, 12, 18, 0x2a2030); // skirt
+    this.add.rectangle(mx + 8, my + 38, 12, 18, 0x2a2030);
+    // Arms folded toward centre (toward player)
+    this.add.rectangle(mx + 14, my + 8, 6, 18, 0x6a3a4a).setRotation(0.4);
+    this.add.rectangle(mx + 16, my + 18, 6, 16, 0x6a3a4a).setRotation(0.7);
+    // Head + bun
+    this.add.circle(mx, my - 14, 11, 0xf2c79a);
+    this.add.circle(mx - 6, my - 22, 5, 0xc0c0c0); // grey bun
+    this.add.circle(mx + 4, my - 22, 5, 0xc0c0c0);
+    // Smiling face — closed-eye crescents + mouth curve
+    this.add.line(0, 0, mx - 5, my - 16, mx - 1, my - 14, 0x101010, 1).setOrigin(0).setLineWidth(1.5);
+    this.add.line(0, 0, mx + 1, my - 14, mx + 5, my - 16, 0x101010, 1).setOrigin(0).setLineWidth(1.5);
+    this.add.arc(mx, my - 8, 4, 0, 180, false, 0xff6b8a).setStrokeStyle(1.5, 0x6a2030);
+    // Speech-thought bubble pointing toward player (small)
+    this.add.text(mx + 30, my - 30, '♡', {
+      fontFamily: 'serif', fontSize: '20px', color: '#ff9ab0',
+    }).setOrigin(0.5);
+
+    // You on the right — facing left, shy: head tilted, sweat bead, blushing
+    const px = cx + 70;
+    const py = cy + 8;
+    this.add.rectangle(px, py + 14, 28, 40, 0x4a5a70); // shirt
+    this.add.rectangle(px - 6, py + 38, 10, 18, 0x2a2820); // pants
+    this.add.rectangle(px + 6, py + 38, 10, 18, 0x2a2820);
+    // Arm scratching back of head
+    this.add.rectangle(px - 12, py + 4, 6, 22, 0x4a5a70).setRotation(-0.4);
+    this.add.rectangle(px + 14, py + 12, 6, 18, 0x4a5a70);
+    // Head — tilted slightly, looking down-left
+    this.add.circle(px - 2, py - 14, 11, 0xf2d6b6);
+    // Hair — short tousled
+    this.add.rectangle(px - 4, py - 22, 22, 6, 0x2a1810);
+    this.add.rectangle(px + 5, py - 24, 8, 4, 0x2a1810);
+    // Blush dots on cheeks
+    this.add.circle(px - 8, py - 12, 2.5, 0xff8a9a, 0.7);
+    this.add.circle(px + 4, py - 12, 2.5, 0xff8a9a, 0.7);
+    // Eyes — small dots, looking down
+    this.add.circle(px - 4, py - 14, 1.2, 0x101010);
+    this.add.circle(px + 2, py - 14, 1.2, 0x101010);
+    // Awkward mouth — small flat dash
+    this.add.rectangle(px - 1, py - 10, 4, 1.2, 0x101010);
+    // Sweat bead on the side of the head
+    this.add.ellipse(px + 11, py - 18, 4, 6, 0x6acfff, 0.95);
+    this.add.ellipse(px + 11, py - 18, 1.5, 2.5, 0xffffff, 0.85);
+
+    // Tiny "..." thought bubble above the player
+    this.add.ellipse(px + 22, py - 36, 38, 18, 0xfdfcf2, 0.95).setStrokeStyle(1, 0x2a2820);
+    this.add.text(px + 22, py - 36, '⋯⋯⋯', {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#1a1a1a',
+    }).setOrigin(0.5);
+    this.add.circle(px + 12, py - 26, 3, 0xfdfcf2).setStrokeStyle(1, 0x2a2820);
+    this.add.circle(px + 8,  py - 22, 1.8, 0xfdfcf2).setStrokeStyle(1, 0x2a2820);
+  }
+
   vignetteSunAfterRain(cx, cy) {
     const w = GAME_WIDTH;
     // Sky gradient — three bands top to bottom (deep blue → cyan → cream).

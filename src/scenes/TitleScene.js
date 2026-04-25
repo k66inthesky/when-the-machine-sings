@@ -90,11 +90,8 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 800, yoyo: true, repeat: -1 });
 
-    this.add.text(w / 2, h - 28, I18n.t('title.credit_jam'), {
+    this.add.text(w / 2, h - 18, I18n.t('title.credit_jam'), {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#8a8880',
-    }).setOrigin(0.5);
-    this.add.text(w / 2, h - 14, I18n.t('title.credit_dedication'), {
-      fontFamily: 'serif', fontSize: '11px', color: '#8a8880', fontStyle: 'italic',
     }).setOrigin(0.5);
 
     // Persistent best from a prior run — silent if none.

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { SCENES, GAME_WIDTH, GAME_HEIGHT, ENDING_THRESHOLD } from '../config.js';
 import { getMomLine } from '../data/dialogue.js';
 import { TOTAL_DAYS } from '../data/levels.js';
 import I18n from '../systems/I18n.js';
@@ -98,7 +98,8 @@ export default class ResultScene extends Phaser.Scene {
       this.cameras.main.fadeOut(400, 10, 10, 15);
       this.time.delayedCall(430, () => {
         if (this.day >= TOTAL_DAYS) {
-          this.scene.start(SCENES.ENDING, { totalScore: this.runningTotal });
+          const failed = this.runningTotal < ENDING_THRESHOLD;
+          this.scene.start(SCENES.ENDING, { totalScore: this.runningTotal, failed });
         } else {
           this.scene.start(SCENES.APARTMENT, { day: this.day + 1, totalScore: this.runningTotal });
         }

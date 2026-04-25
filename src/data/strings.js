@@ -20,10 +20,6 @@ export const STRINGS = {
     en: 'Gamedev.js Jam 2026 — Theme: Machines',
     zh: 'Gamedev.js Jam 2026 — 主題：機器',
   },
-  'title.credit_dedication': {
-    en: 'Dedicated to the sanitation workers of Taiwan',
-    zh: '獻給台灣的清潔隊員',
-  },
   'title.best': {
     en: 'Best: {n}',
     zh: '最高分：{n}',
@@ -96,6 +92,10 @@ export const STRINGS = {
   'apt.slack_label': {
     en: 'Slack: {n}',
     zh: '摸魚：{n}',
+  },
+  'apt.slack_label_short': {
+    en: 'SLACK',
+    zh: '摸魚',
   },
   'apt.truck_label': {
     en: 'Truck: {status}',
@@ -347,8 +347,8 @@ export const STRINGS = {
       '最高檢察署發函：',
       '「衡情、衡理、衡法。」',
       '',
-      '今天早上，他依然在跑這條路線。',
-      '機器依然在唱歌。',
+      '今天早上，機器依然在跑這路線，',
+      '它依然在唱歌。',
       '',
       '謝謝他們。',
     ],
@@ -363,7 +363,7 @@ export const STRINGS = {
       'Theme: Machines',
       '',
       'Music inspired by "Für Elise" — Ludwig van Beethoven',
-      'Narrative drawn from Taiwan case coverage, 2024–2025',
+      'Based on real Taipei news, 2024–2026',
       '',
       'Made with Phaser 3, Vite, WebAudio, and a lot of coffee.',
       '獻給所有在傍晚跑過巷子的人。',
@@ -373,7 +373,7 @@ export const STRINGS = {
       '主題：機器',
       '',
       '音樂靈感來自〈給愛麗絲〉 — 貝多芬',
-      '故事取材自 2024–2025 年台灣新聞報導',
+      '取自台北市 2024–2026 年真實新聞',
       '',
       '用 Phaser 3、Vite、WebAudio 與大量咖啡製作。',
       '獻給所有在傍晚跑過巷子的人。',
@@ -399,6 +399,30 @@ export const STRINGS = {
   'ending.prompt_return': {
     en: '[ SPACE to return to title ]',
     zh: '[ SPACE — 回到標題 ]',
+  },
+
+  // ── Fail card (week below ending threshold) ────────────────────────────────
+  'fail.title': {
+    en: 'CHALLENGE FAILED',
+    zh: '挑戰失敗',
+  },
+  'fail.body': {
+    en: [
+      'Your week ended at {s} points.',
+      'Reach at least {t} to see the rest of the story.',
+      '',
+      'The route still rolls without you.',
+    ],
+    zh: [
+      '你這週的分數：{s} 分。',
+      '至少要達到 {t} 才能看完故事。',
+      '',
+      '路線照樣跑，少了你也沒差。',
+    ],
+  },
+  'fail.prompt': {
+    en: '[ SPACE — back to title ]',
+    zh: '[ SPACE — 回到標題重來 ]',
   },
 
   // ── Pause scene ────────────────────────────────────────────────────────────

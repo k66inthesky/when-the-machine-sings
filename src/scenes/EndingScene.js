@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENES, GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { SCENES, GAME_WIDTH, GAME_HEIGHT, ENDING_THRESHOLD } from '../config.js';
 import Playables from '../systems/Playables.js';
 import I18n from '../systems/I18n.js';
 
@@ -30,6 +30,7 @@ export default class EndingScene extends Phaser.Scene {
 
   init(data) {
     this.totalScore = data?.totalScore || 0;
+    this.failed = !!data?.failed;
     // Week's done — clear the resume slot.
     Playables.clearProgress();
   }
@@ -37,6 +38,15 @@ export default class EndingScene extends Phaser.Scene {
   create() {
     this.actIndex = 0;
     this.cameras.main.fadeIn(700, 5, 5, 10);
+    if (this.failed) {
+      // No bgm on fail — the silence sells the loss.
+      this.showFailCard();
+      this.unsubI18n = I18n.onChange(() => this.showFailCard());
+      this.events.once('shutdown', () => {
+        if (this.unsubI18n) this.unsubI18n();
+      });
+      return;
+    }
     if (this.cache.audio.exists('bgm-ending')) {
       this.endingBgm = this.sound.add('bgm-ending', { loop: true, volume: 0.6 });
       this.endingBgm.play();
@@ -46,6 +56,39 @@ export default class EndingScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       if (this.endingBgm && this.endingBgm.isPlaying) this.endingBgm.stop();
       if (this.unsubI18n) this.unsubI18n();
+    });
+  }
+
+  showFailCard() {
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    this.children.removeAll();
+    this.input.keyboard.removeAllListeners();
+
+    this.add.rectangle(0, 0, w, h, 0x080608).setOrigin(0);
+
+    const title = this.add.text(w / 2, h / 2 - 80, I18n.t('fail.title'), {
+      fontFamily: 'serif', fontSize: '54px', color: '#ff6b8a',
+      fontStyle: 'bold', stroke: '#1a0510', strokeThickness: 5,
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: title, alpha: 1, duration: 700 });
+
+    const body = I18n.tArray('fail.body')
+      .map((line) => line.replace('{s}', this.totalScore).replace('{t}', ENDING_THRESHOLD))
+      .join('\n');
+    this.add.text(w / 2, h / 2 + 20, body, {
+      fontFamily: 'serif', fontSize: '17px', color: '#e8dccb',
+      align: 'center', lineSpacing: 8,
+    }).setOrigin(0.5);
+
+    const prompt = this.add.text(w / 2, h - 40, I18n.t('fail.prompt'), {
+      fontFamily: 'sans-serif', fontSize: '14px', color: '#666',
+    }).setOrigin(0.5);
+    this.tweens.add({ targets: prompt, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
+
+    this.input.keyboard.once('keydown-SPACE', () => {
+      this.cameras.main.fadeOut(500, 5, 5, 10);
+      this.time.delayedCall(520, () => this.scene.start(SCENES.TITLE));
     });
   }
 

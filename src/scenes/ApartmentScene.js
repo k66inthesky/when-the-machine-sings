@@ -85,9 +85,7 @@ export default class ApartmentScene extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '18px', color: '#e8b96a',
     }).setOrigin(0.5, 0);
 
-    this.slackLabel = this.add.text(20, 20, I18n.t('apt.slack_label', { n: 0 }), {
-      fontFamily: 'sans-serif', fontSize: '16px', color: '#6acfff',
-    });
+    this.createSlackHud();
 
     this.truckBarBg = this.add.rectangle(w - 20, 20, 200, 14, 0x1a1a2a).setOrigin(1, 0).setStrokeStyle(1, 0x4a3040);
     this.truckBar = this.add.rectangle(w - 220 + 1, 21, 0, 12, 0xff6b8a).setOrigin(0, 0);
@@ -282,8 +280,7 @@ export default class ApartmentScene extends Phaser.Scene {
 
   scrollPhone() {
     if (this.left) return;
-    this.slackPoints += 2;
-    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
+    this.bumpSlack(2);
     Sfx.scroll(this);
     this.tweens.add({
       targets: this.phoneGlow,
@@ -296,8 +293,7 @@ export default class ApartmentScene extends Phaser.Scene {
 
   toggleTv() {
     if (this.left) return;
-    this.slackPoints += 1;
-    this.slackLabel.setText(I18n.t('apt.slack_label', { n: this.slackPoints }));
+    this.bumpSlack(1);
     Sfx.static(this);
     this.tweens.add({
       targets: this.tvScreen,
@@ -597,6 +593,75 @@ export default class ApartmentScene extends Phaser.Scene {
         duration: 400,
         onComplete: () => this.notifGroup.setVisible(false),
       });
+    });
+  }
+
+  // Top-left slack HUD: phone-icon + label + segmented progress bar + number.
+  // Bar tier flips colour as the player gets greedier — cyan→amber→red — so
+  // the cost of slacking is felt visually before the result screen scolds.
+  createSlackHud() {
+    const x = 20;
+    const y = 14;
+    const barW = 110;
+    const barH = 9;
+
+    // Phone glyph — small rounded rect with screen + home dot
+    this.add.rectangle(x + 6, y + 13, 14, 22, 0x1a1a2a).setStrokeStyle(1, 0x6acfff);
+    this.add.rectangle(x + 6, y + 11, 10, 14, 0x6acfff, 0.45);
+    this.add.circle(x + 6, y + 21, 1.4, 0x6acfff);
+
+    this.add.text(x + 22, y + 1, I18n.t('apt.slack_label_short'), {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#9adfff',
+    });
+
+    this.slackBarBg = this.add.rectangle(x + 22, y + 18, barW, barH, 0x102030)
+      .setOrigin(0, 0).setStrokeStyle(1, 0x4a6a80);
+    // scaleX-driven fill — tweens reliably on Phaser Shapes (Rectangle.width
+    // has a setter but doesn't cleanly tween via the WebGL renderer).
+    this.slackBar = this.add.rectangle(x + 22 + 1, y + 18 + 1, barW - 2, barH - 2, 0x6acfff)
+      .setOrigin(0, 0).setScale(0, 1);
+    // Tick marks at 33% / 66% to give the bar a notion of "tiers"
+    this.add.line(x + 22 + barW * 0.33, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1);
+    this.add.line(x + 22 + barW * 0.66, y + 18 + barH / 2, 0, -barH / 2, 0, barH / 2, 0x4a6a80)
+      .setLineWidth(1);
+
+    this.slackNum = this.add.text(x + 22 + barW + 8, y + 13, '0', {
+      fontFamily: 'monospace', fontSize: '15px', color: '#6acfff', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+
+    this.slackBarMax = barW - 2;
+    this.slackSoftCap = 60; // bar saturates at 60 points; number keeps counting
+  }
+
+  bumpSlack(amount) {
+    this.slackPoints += amount;
+    this.slackNum.setText(String(this.slackPoints));
+
+    // Tier colours track greed: cyan (chill) → amber (heads up) → red (greedy).
+    let color = 0x6acfff;
+    let textColor = '#6acfff';
+    if (this.slackPoints >= this.slackSoftCap * 0.66) { color = 0xff6b8a; textColor = '#ff6b8a'; }
+    else if (this.slackPoints >= this.slackSoftCap * 0.33) { color = 0xe8b96a; textColor = '#e8b96a'; }
+
+    const fillRatio = Math.min(1, this.slackPoints / this.slackSoftCap);
+    this.slackBar.fillColor = color;
+    this.slackNum.setColor(textColor);
+
+    this.tweens.add({
+      targets: this.slackBar,
+      scaleX: fillRatio,
+      duration: 220,
+      ease: 'Cubic.easeOut',
+    });
+    // Quick number pop + bar flash so each tap feels rewarding (and hollow).
+    this.slackNum.setScale(1.35);
+    this.tweens.add({
+      targets: this.slackNum, scale: 1, duration: 200, ease: 'Back.easeOut',
+    });
+    this.slackBar.setAlpha(1);
+    this.tweens.add({
+      targets: this.slackBar, alpha: 0.7, duration: 120, yoyo: true,
     });
   }
 

@@ -16,11 +16,13 @@ const STORAGE_KEY = 'wtms_lang';
 const SUPPORTED = ['en', 'zh'];
 const FALLBACK = 'en';
 
+// English is the jam-mandated default language ("Submitted games should
+// have English as the default language" — Gamedev.js Jam 2026 rules).
+// We DON'T autodetect from navigator.language: a zh-TW judge would
+// otherwise see Chinese as the boot language and read that as a rules
+// violation. Players who want zh flip via the title-screen toggle or
+// the L key, and the choice persists in localStorage from then on.
 function detectDefault() {
-  try {
-    const nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
-    if (nav.startsWith('zh')) return 'zh';
-  } catch (_) {}
   return FALLBACK;
 }
 

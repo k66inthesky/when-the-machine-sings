@@ -20,6 +20,10 @@ export const STRINGS = {
     en: 'Gamedev.js Jam 2026 — Theme: Machines',
     zh: 'Gamedev.js Jam 2026 — 主題：機器',
   },
+  'title.branching_teaser': {
+    en: 'Each run is 1 of 8,192 paths · 9 hidden easter-egg scenes',
+    zh: '每次都是 8,192 條路徑之一 · 內建 9 段隱藏彩蛋',
+  },
   'title.best': {
     en: 'Best: {n}',
     zh: '最高分：{n}',
@@ -57,12 +61,16 @@ export const STRINGS = {
       'bag in hand, before the music fades.',
       '',
       'Miss it, and your mother will not let you forget.',
+      '',
+      '🎧 The melody IS the mechanic — please play with sound on.',
     ],
     zh: [
       '你必須拎著垃圾袋在巷口等，',
       '在音樂消失前把袋子交上去。',
       '',
       '錯過了 — 媽媽不會讓你忘記這件事。',
+      '',
+      '🎧 旋律就是核心機制 — 請開喇叭玩。',
     ],
   },
   'intro.continue': {

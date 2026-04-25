@@ -240,11 +240,22 @@ export default class EndingScene extends Phaser.Scene {
       this.add.circle(x - 7 * s, y - 16 * s, 4 * s, 0xc8c8c8);
       // Walking stick angling right
       this.add.line(0, 0, x + 8 * s, y - 4 * s, x + 16 * s, y + 50 * s, 0x6a4a30, 1).setOrigin(0).setLineWidth(2);
-    } else if (kind === 'judge') {
+    } else if (kind === 'judge' || kind === 'prosecutor') {
+      // Taiwanese court robes are black with a coloured front-band:
+      //   judge      → navy blue (深藍)
+      //   prosecutor → purple (紫)
+      // (lawyers wear white trim; we don't draw one here)
+      const trim = kind === 'judge' ? 0x1a3068 : 0x6a2a8a;
       this.add.rectangle(x, y + 12 * s, 30 * s, 44 * s, 0x141014); // black robe
-      this.add.rectangle(x, y + 6 * s,  18 * s, 14 * s, 0xe8dccb); // collar
+      // Vertical trim bands down the chest (両側)
+      this.add.rectangle(x - 9 * s, y + 14 * s, 4 * s, 38 * s, trim);
+      this.add.rectangle(x + 9 * s, y + 14 * s, 4 * s, 38 * s, trim);
+      // White collar/jabot
+      this.add.rectangle(x, y + 0 * s, 14 * s, 12 * s, 0xfdfcf2);
+      this.add.rectangle(x, y + 6 * s, 8 * s,  6 * s,  trim, 0.55); // tied bow flash
+      // Head + dark hair
       this.add.circle(x, y - 14 * s, 10 * s, head);
-      this.add.rectangle(x, y - 24 * s, 24 * s, 6 * s, 0xc8c8c8); // wig
+      this.add.rectangle(x, y - 22 * s, 22 * s, 6 * s, 0x2a1a14);
     } else if (kind === 'reporter') {
       this.add.rectangle(x, y + 10 * s, 24 * s, 36 * s, 0x2a3050); // suit
       this.add.line(0, 0, x, y - 4 * s, x, y + 16 * s, 0xe8dccb).setOrigin(0).setLineWidth(2); // tie
@@ -326,10 +337,12 @@ export default class EndingScene extends Phaser.Scene {
     // Two flags
     this.add.rectangle(cx - 140, cy - 50, 26, 60, 0x9a2030);
     this.add.rectangle(cx + 140, cy - 50, 26, 60, 0x142060);
-    // Judge silhouette behind bench
-    this.drawPerson(cx, cy + 8, 'judge', 1);
+    // Judge (centre, navy trim) flanked by a prosecutor (purple trim) — Taiwan
+    // court chambers have both behind the bench during sentencing.
+    this.drawPerson(cx - 50, cy + 8, 'judge',      1);
+    this.drawPerson(cx + 50, cy + 8, 'prosecutor', 1);
     // Defendant (cleaner) small at bottom-left
-    this.drawPerson(cx - 110, cy + 100, 'cleaner', 0.7);
+    this.drawPerson(cx - 130, cy + 100, 'cleaner', 0.7);
     // Gavel — coming down with motion lines
     const gx = cx + 80, gy = cy + 30;
     this.add.rectangle(gx, gy, 30, 14, 0x6a4a28).setStrokeStyle(1, 0x2a1a08);
@@ -446,8 +459,10 @@ export default class EndingScene extends Phaser.Scene {
     this.add.rectangle(cx, cy + 60, 380, 20, 0x4a3020);
     this.add.rectangle(cx, cy + 80, 360, 20, 0x3a2418);
     this.add.rectangle(cx, cy - 50, 380, 70, 0x1a1614);
-    this.drawPerson(cx - 60, cy + 8, 'judge', 1);
-    this.drawPerson(cx + 60, cy + 8, 'judge', 1);
+    // Leniency moment — both navy-trim judge and purple-trim prosecutor
+    // weighing the public response together.
+    this.drawPerson(cx - 60, cy + 8, 'judge',      1);
+    this.drawPerson(cx + 60, cy + 8, 'prosecutor', 1);
     // Soft glow
     this.add.circle(cx - 60, cy - 14, 22, 0xfff4cc, 0.18);
     this.add.circle(cx + 60, cy - 14, 22, 0xfff4cc, 0.18);

@@ -119,6 +119,25 @@ export default class ApartmentScene extends Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '12px', color: '#aaa',
     }).setOrigin(0.5);
 
+    // Slack tutorial — pops up briefly at start so first-time players know
+    // tapping E/T isn't a mistake but the actual scoring strategy. Auto-fades
+    // after ~5s so it doesn't block the main HUD for long.
+    const slackHint = this.add.text(w / 2, h / 2 + 120, I18n.t('apt.slack_hint'), {
+      fontFamily: 'serif', fontSize: '15px', color: '#fff4cc',
+      fontStyle: 'italic', align: 'center', lineSpacing: 4,
+      backgroundColor: 'rgba(20,16,32,0.85)', padding: { x: 14, y: 8 },
+      stroke: '#2a1a10', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(HUD_DEPTH).setAlpha(0);
+    this.tweens.add({
+      targets: slackHint, alpha: 1, duration: 400, delay: 1300,
+      onComplete: () => {
+        this.tweens.add({
+          targets: slackHint, alpha: 0, duration: 600, delay: 4500,
+          onComplete: () => slackHint.destroy(),
+        });
+      },
+    });
+
     // On-screen buttons — work for mouse + touch; keyboard still works too.
     // Each gets a small procedural pictogram on the left so the action reads at
     // a glance even when the user can't make out the small label text.
@@ -596,6 +615,16 @@ export default class ApartmentScene extends Phaser.Scene {
 
     this.drawStairwellNeighborFigure(c, neighbor);
     const bubbleLine = this.drawNeighborBubble(c, neighbor, I18n.t(neighbor.opener));
+
+    // Cultural footnote — appears as a thin caption at the top of the
+    // stairwell so the player understands why these chance encounters
+    // still happen at trash time even in modern Taipei.
+    const meta = this.add.text(w / 2, 22, I18n.t('apt.stairwell_meta'), {
+      fontFamily: 'serif', fontSize: '13px', color: '#fff4cc', fontStyle: 'italic',
+      align: 'center', wordWrap: { width: w - 80 },
+      backgroundColor: 'rgba(20,16,32,0.78)', padding: { x: 12, y: 6 },
+    }).setOrigin(0.5, 0).setDepth(2003);
+    c.add(meta);
 
     // [E] prompt card with a thin shrinking timer bar so the 2s window is
     // visible. Pressing E (or clicking) inside the window engages.

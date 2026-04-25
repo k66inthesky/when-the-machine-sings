@@ -139,7 +139,7 @@ export const STRINGS = {
   'apt.nb_huang_yes':    { en: 'Help him', zh: '幫他提' },
   'apt.nb_huang_no':     { en: 'Sorry, in a rush',  zh: '不好意思要趕時間' },
   // ── 陳奶奶 (2F village chief grandma) ──
-  'apt.nb_chen_name':    { en: 'Chief Chen (2F)',       zh: '里長陳奶奶（二樓）' },
+  'apt.nb_chen_name':    { en: 'Mrs. Chen (2F)',         zh: '里長陳奶奶（二樓）' },
   'apt.nb_chen_opener':  { en: 'Heard the latest? Come, let me tell you...',
                             zh: '欸欸欸 你聽我說喔，最近⋯' },
   'apt.nb_chen_yes':     { en: 'Listen', zh: '停下來聽' },
@@ -173,11 +173,23 @@ export const STRINGS = {
                             zh: '⋯不是叫你少跟張阿姨聊八卦嗎？' },
   'apt.mom_huang_proud': { en: 'Missed the truck — but Huang\'s kids came by to thank you. Good boy.',
                             zh: '雖然垃圾車沒趕上，但黃爺爺的家人特地來道謝。媽媽以你為傲。' },
-  'apt.mom_chen_miss':   { en: 'Listening to Chen-nai-nai is fine — but not when the truck is two minutes away!',
+  'apt.mom_chen_miss':   { en: 'Listening to Mrs. Chen is fine — but not when the truck is two minutes away!',
                             zh: '聽陳奶奶講話可以，但是垃圾車快來的時候不行！' },
   'apt.stairwell_caption': {
     en: 'down five flights — concrete + Für Elise echoing up',
     zh: '老公寓五樓走下去 — 給愛麗絲從樓下飄上來',
+  },
+  // On-screen tutorial hint shown briefly at the start of each apartment day —
+  // tells the player slacking is not just allowed, it's scored.
+  'apt.slack_hint': {
+    en: 'Truck is far. Slack as much as you can — slacking earns points!\n(but not too low or mom won\'t let you forget it)',
+    zh: '離垃圾車到還很久，請盡可能地偷懶吧！\n偷懶會計分喔，但不能太低分被媽媽念！',
+  },
+  // Cultural footnote shown on stairwell encounters — frames why these
+  // chance meetings still happen in modern Taipei.
+  'apt.stairwell_meta': {
+    en: 'Urbanisation closes doors — but trash time is when neighbours nod hello.',
+    zh: '都市化讓人們關起家門 — 倒垃圾時段卻成了街坊點頭打招呼閒聊之時。',
   },
 
   // ── Street scene ───────────────────────────────────────────────────────────

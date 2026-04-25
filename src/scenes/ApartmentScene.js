@@ -167,9 +167,11 @@ export default class ApartmentScene extends Phaser.Scene {
       this.truckRecording.play();
     }
 
-    // Input
-    this.input.keyboard.on('keydown-E', () => this.scrollPhone());
-    this.input.keyboard.on('keydown-T', () => this.toggleTv());
+    // Input — ignore browser's auto-repeat so holding E or T can't farm slack.
+    // Each physical press = one bump; release before pressing again. canSlack()
+    // is still in place as a 220ms safety net for pointerdown spam.
+    this.input.keyboard.on('keydown-E', (e) => { if (e && e.repeat) return; this.scrollPhone(); });
+    this.input.keyboard.on('keydown-T', (e) => { if (e && e.repeat) return; this.toggleTv(); });
     this.input.keyboard.on('keydown-ENTER', () => this.leaveForTruck());
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.left) return;
@@ -350,6 +352,13 @@ export default class ApartmentScene extends Phaser.Scene {
     const cx = w / 2, cy = h / 2;
     const pw = 200, ph = 340;
     const c = this.add.container(cx, cy).setDepth(800);
+    // Modal backdrop — full-screen dim child positioned to span the canvas in
+    // local coords (offset by -cx,-cy from the centred container). Its
+    // setInteractive() swallows clicks so the bottom buttons / wall objects
+    // can't be triggered through the overlay.
+    const backdrop = this.add.rectangle(-cx, -cy, w, h, 0x000000, 0.55).setOrigin(0)
+      .setInteractive();
+    c.add(backdrop);
     const frame = this.add.rectangle(0, 0, pw, ph, 0x0a0a14).setStrokeStyle(4, 0xe8b96a, 0.95);
     const screen = this.add.rectangle(0, 6, pw - 22, ph - 60, 0x141828);
     const notch = this.add.rectangle(0, -ph / 2 + 14, 60, 14, 0x000000);
@@ -398,6 +407,11 @@ export default class ApartmentScene extends Phaser.Scene {
     const cx = w / 2, cy = h / 2 - 10;
     const tw = 380, th = 240;
     const c = this.add.container(cx, cy).setDepth(800);
+    // Modal backdrop matching the phone overlay — dims the room + blocks
+    // input from leaking through to the buttons behind.
+    const backdrop = this.add.rectangle(-cx, -cy, w, h, 0x000000, 0.55).setOrigin(0)
+      .setInteractive();
+    c.add(backdrop);
     const cabinet = this.add.rectangle(0, 30, tw + 28, th + 70, 0x2a1a18).setStrokeStyle(2, 0x1a0a08);
     const screen = this.add.rectangle(0, 0, tw, th, 0x141a22).setStrokeStyle(3, 0x0a0a14);
     const knob1 = this.add.circle(tw / 2 - 14, th / 2 + 22, 6, 0x4a3020).setStrokeStyle(1, 0xe8b96a, 0.6);
@@ -465,70 +479,20 @@ export default class ApartmentScene extends Phaser.Scene {
   }
 
   // Taipei old-公寓 stairwell vignette before the player drops to the street.
-  // Procedural draw only now — the cluttered painted PNG was retired in favour
-  // of this cleaner version: bare concrete walls, mosaic steps, handrail, no
-  // scooter or mailbox piles. Day 2-5 add a neighbour encounter on the steps.
+  // Prefers the painted PNG (real-apartment look, decluttered by
+  // scripts/clean-stairwell.cjs); falls back to a procedural draw if the
+  // asset is missing. Day 2-5 always overlay a neighbour with a speech
+  // bubble on top of whichever backdrop is used.
   showStairwellTransition(onDone) {
     const w = GAME_WIDTH, h = GAME_HEIGHT;
     const c = this.add.container(0, 0).setDepth(2000);
-    // Block out the whole frame
-    c.add(this.add.rectangle(0, 0, w, h, 0x0a0a0e).setOrigin(0));
-    // Walls — clean concrete, no stains/cracks (per "沒雜物" brief)
-    c.add(this.add.rectangle(0, 0, w, h, 0x2a2820).setOrigin(0));
-    c.add(this.add.rectangle(0, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
-    c.add(this.add.rectangle(w * 0.72, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
-    // A single subtle horizontal trim line on each wall — gives the concrete
-    // a stairwell feel without piling on grime.
-    c.add(this.add.line(0, 0, 0, h * 0.35, w * 0.28, h * 0.35, 0x3a3028, 0.6).setOrigin(0).setLineWidth(1));
-    c.add(this.add.line(0, 0, w * 0.72, h * 0.35, w, h * 0.35, 0x3a3028, 0.6).setOrigin(0).setLineWidth(1));
-    // Ceiling tube light (flickers briefly)
-    const ceil = this.add.rectangle(w / 2, 28, 200, 14, 0x3a3a30).setStrokeStyle(1, 0x1a1a14);
-    const tube = this.add.rectangle(w / 2, 28, 180, 6, 0xfff4cc, 0.95);
-    c.add(ceil); c.add(tube);
-    this.tweens.add({ targets: tube, alpha: 0.6, duration: 110, yoyo: true, repeat: 4 });
-    // Light cone
-    const cone = this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0);
-    c.add(cone);
-    // Steps descending — mosaic-tile front face + tread, perspective-narrowing
-    // toward a vanishing point at (w/2, h*0.55).
-    const vx = w / 2, vy = h * 0.55;
-    const stepCount = 9;
-    for (let i = 0; i < stepCount; i++) {
-      const t = i / stepCount;
-      const tn = (i + 1) / stepCount;
-      const y0 = vy + (h - vy) * Math.pow(t, 1.4);
-      const y1 = vy + (h - vy) * Math.pow(tn, 1.4);
-      const hw0 = (w * 0.5 - 60) * Math.pow(tn, 0.85) + 40;
-      const hw1 = (w * 0.5 - 60) * Math.pow(t, 0.85) + 40;
-      const tread = this.add.polygon(0, 0, [
-        vx - hw1, y0, vx + hw1, y0,
-        vx + hw0, y1, vx - hw0, y1,
-      ], 0x9a8a70, 0.95).setOrigin(0);
-      tread.setStrokeStyle(1, 0x4a3a28, 0.8);
-      c.add(tread);
-      const riser = this.add.polygon(0, 0, [
-        vx - hw1, y0 - 6, vx + hw1, y0 - 6,
-        vx + hw1, y0, vx - hw1, y0,
-      ], 0x3a2a22, 0.95).setOrigin(0);
-      c.add(riser);
-      const dots = 8 - i;
-      for (let d = -dots; d <= dots; d++) {
-        const dx = vx + (hw0 * d / (dots + 1));
-        const dy = (y0 + y1) / 2;
-        c.add(this.add.circle(dx, dy, 1.5 + (1 - t) * 1.5, 0x6a5a40, 0.55));
-      }
-    }
-    // Both-side handrails — slim wood rails along the descent
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        const tn = (i + 0.5) / 3;
-        const x = w / 2 + side * ((w * 0.5 - 60) * Math.pow(tn, 0.85) + 30);
-        const y0 = vy + (h - vy) * Math.pow(tn, 1.4);
-        c.add(this.add.rectangle(x, y0, 4, 50, 0x6a4a30).setOrigin(0.5, 1));
-      }
-      const railX1 = w / 2 + side * 60;
-      const railX2 = side > 0 ? w - 30 : 30;
-      c.add(this.add.line(0, 0, railX1, vy + 6, railX2, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
+
+    if (this.textures.exists('bg-stairwell')) {
+      // Painted backdrop + slight dim so any residual cleanup smudges fade.
+      c.add(this.add.image(w / 2, h / 2, 'bg-stairwell').setDisplaySize(w, h));
+      c.add(this.add.rectangle(0, 0, w, h, 0x0a0810, 0.22).setOrigin(0));
+    } else {
+      this.drawProceduralStairwell(c, w, h);
     }
 
     // Day 2-5: a neighbour standing on the upper step says hi. Day 1 keeps
@@ -568,6 +532,41 @@ export default class ApartmentScene extends Phaser.Scene {
         },
       });
     });
+  }
+
+  drawProceduralStairwell(c, w, h) {
+    c.add(this.add.rectangle(0, 0, w, h, 0x0a0a0e).setOrigin(0));
+    c.add(this.add.rectangle(0, 0, w, h, 0x2a2820).setOrigin(0));
+    c.add(this.add.rectangle(0, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
+    c.add(this.add.rectangle(w * 0.72, 0, w * 0.28, h, 0x1a1812).setOrigin(0));
+    const ceil = this.add.rectangle(w / 2, 28, 200, 14, 0x3a3a30).setStrokeStyle(1, 0x1a1a14);
+    const tube = this.add.rectangle(w / 2, 28, 180, 6, 0xfff4cc, 0.95);
+    c.add(ceil); c.add(tube);
+    this.tweens.add({ targets: tube, alpha: 0.6, duration: 110, yoyo: true, repeat: 4 });
+    c.add(this.add.triangle(w / 2, 35, -180, 0, 180, 0, 0, h, 0xfff4cc, 0.07).setOrigin(0.5, 0));
+    const vx = w / 2, vy = h * 0.55;
+    const stepCount = 9;
+    for (let i = 0; i < stepCount; i++) {
+      const t = i / stepCount;
+      const tn = (i + 1) / stepCount;
+      const y0 = vy + (h - vy) * Math.pow(t, 1.4);
+      const y1 = vy + (h - vy) * Math.pow(tn, 1.4);
+      const hw0 = (w * 0.5 - 60) * Math.pow(tn, 0.85) + 40;
+      const hw1 = (w * 0.5 - 60) * Math.pow(t, 0.85) + 40;
+      c.add(this.add.polygon(0, 0, [
+        vx - hw1, y0, vx + hw1, y0,
+        vx + hw0, y1, vx - hw0, y1,
+      ], 0x9a8a70, 0.95).setOrigin(0).setStrokeStyle(1, 0x4a3a28, 0.8));
+      c.add(this.add.polygon(0, 0, [
+        vx - hw1, y0 - 6, vx + hw1, y0 - 6,
+        vx + hw1, y0, vx - hw1, y0,
+      ], 0x3a2a22, 0.95).setOrigin(0));
+    }
+    for (const side of [-1, 1]) {
+      const railX1 = w / 2 + side * 60;
+      const railX2 = side > 0 ? w - 30 : 30;
+      c.add(this.add.line(0, 0, railX1, vy + 6, railX2, h - 30, 0x8a5a30, 0.95).setOrigin(0).setLineWidth(4));
+    }
   }
 
   // Adds a small neighbour silhouette + speech bubble to the stairwell

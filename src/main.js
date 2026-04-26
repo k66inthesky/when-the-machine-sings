@@ -111,33 +111,30 @@ Playables.onResume(() => {
 });
 
 // Global AudioContext unlock — browsers require a user gesture before
-// any audio plays. Phaser sets up its own unlock path, but on some
-// browser + scene-graph combinations the ctx ends up `suspended` even
-// after SPACE on the title. Result: the Für Elise BGM is wired up and
-// "playing" at volume 0 but the masterGain never ramps because the
-// whole context is frozen. Belt-and-braces: resume on the first
-// pointerdown OR keydown anywhere, then detach ourselves so we never
-// fight a user-triggered mute (M key) that legitimately suspends.
+// any audio plays. Incognito + iframe (itch.io's embed) can reject the
+// first ctx.resume() because of timing: Phaser fires its internal unlock
+// before our handler, the user's gesture is "consumed", and any later
+// resume() (e.g. from __ensureAudioOn__ in scene.create()) silently
+// rejects because it's not inside a gesture frame.
+//
+// Fix: keep the unlock listeners attached FOREVER. Every pointerdown,
+// keydown, touchstart, mousedown, click is treated as a fresh chance to
+// resume. ctx.resume() on an already-running context is a no-op so
+// there's no perf cost. This guarantees that by the time the player
+// touches any key in the apartment (E, T, ENTER, etc.), audio is
+// definitively unlocked.
 const unlockAudio = () => {
   const ctx = game.sound && game.sound.context;
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
-  // Give Phaser a nudge too — its internal unlock flag gates HTML5
-  // Audio fallback on Safari.
   if (game.sound && typeof game.sound.unlock === 'function') {
     try { game.sound.unlock(); } catch (_) {}
   }
 };
-const onFirstGesture = () => {
-  unlockAudio();
-  window.removeEventListener('pointerdown', onFirstGesture);
-  window.removeEventListener('keydown', onFirstGesture);
-  window.removeEventListener('touchstart', onFirstGesture);
-};
-window.addEventListener('pointerdown', onFirstGesture);
-window.addEventListener('keydown', onFirstGesture);
-window.addEventListener('touchstart', onFirstGesture, { passive: true });
+['pointerdown', 'keydown', 'touchstart', 'mousedown', 'click'].forEach((evt) => {
+  window.addEventListener(evt, unlockAudio, evt === 'touchstart' ? { passive: true } : false);
+});
 
 // Global mute toggle — M at any time. Derives the new state from the LIVE
 // game.sound.mute value instead of a tracked local var: if anything
@@ -147,13 +144,14 @@ window.addEventListener('touchstart', onFirstGesture, { passive: true });
 // pressing M is always "flip whatever it is now".
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'm' && e.key !== 'M') return;
+  const ctx = game.sound.context;
+  // Always try to resume on M-press first — M is always a fresh user
+  // gesture, so this is a legitimate moment to unlock if browser policy
+  // had been blocking it. THEN flip mute based on the live state.
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   const newMuted = !game.sound.mute;
   game.sound.mute = newMuted;
-  const ctx = game.sound.context;
-  if (ctx) {
-    if (newMuted && ctx.state === 'running') ctx.suspend();
-    else if (!newMuted && ctx.state === 'suspended') ctx.resume();
-  }
+  if (ctx && newMuted && ctx.state === 'running') ctx.suspend();
   const flash = document.createElement('div');
   flash.textContent = I18n.t(newMuted ? 'hud.muted' : 'hud.on');
   flash.style.cssText = 'position:fixed;top:12px;left:12px;padding:4px 10px;background:rgba(10,10,15,0.85);color:#6acfff;font:13px sans-serif;border:1px solid #6acfff;border-radius:3px;z-index:9999;pointer-events:none;';

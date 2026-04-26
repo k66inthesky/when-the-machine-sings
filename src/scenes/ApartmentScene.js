@@ -185,6 +185,12 @@ export default class ApartmentScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.notifGroup.add([notifBg, this.notifText]);
 
+    // Force audio on entering the apartment scene — defensive against any
+    // upstream state (Phaser default, stale YT SDK, browser autoplay policy)
+    // that could leave Day 1 silent. The M-key handler still owns the
+    // user-triggered mute path.
+    if (typeof window.__ensureAudioOn__ === 'function') window.__ensureAudioOn__();
+
     // Audio — core mechanic. Hand off to real BGM if user loaded one.
     this.audio = new AudioDistance(this);
     if (this.cache.audio.exists('bgm-main')) {

@@ -68,6 +68,7 @@ export default class EndingScene extends Phaser.Scene {
       });
       return;
     }
+    if (typeof window.__ensureAudioOn__ === 'function') window.__ensureAudioOn__();
     if (this.cache.audio.exists('bgm-ending')) {
       this.endingBgm = this.sound.add('bgm-ending', { loop: true, volume: 0.6 });
       this.endingBgm.play();

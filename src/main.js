@@ -139,24 +139,34 @@ window.addEventListener('pointerdown', onFirstGesture);
 window.addEventListener('keydown', onFirstGesture);
 window.addEventListener('touchstart', onFirstGesture, { passive: true });
 
-// Global mute toggle — M at any time.
-// AudioDistance's synth oscillators share Phaser's AudioContext (see
-// AudioDistance.js:32), so suspending the ctx silences both the synth
-// and any Phaser-loaded sounds in one shot. Phaser.sound.mute handles
-// the non-ctx code paths Phaser uses for HTML5 audio fallback.
-let muted = false;
+// Global mute toggle — M at any time. Derives the new state from the LIVE
+// game.sound.mute value instead of a tracked local var: if anything
+// upstream (Phaser default, stale YT SDK, scene init) set mute=true while
+// the local var was still false, the old code took two M presses to
+// recover (first toggled local→true→re-mute, second toggled back). Now
+// pressing M is always "flip whatever it is now".
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'm' && e.key !== 'M') return;
-  muted = !muted;
-  game.sound.mute = muted;
+  const newMuted = !game.sound.mute;
+  game.sound.mute = newMuted;
   const ctx = game.sound.context;
   if (ctx) {
-    if (muted && ctx.state === 'running') ctx.suspend();
-    else if (!muted && ctx.state === 'suspended') ctx.resume();
+    if (newMuted && ctx.state === 'running') ctx.suspend();
+    else if (!newMuted && ctx.state === 'suspended') ctx.resume();
   }
   const flash = document.createElement('div');
-  flash.textContent = I18n.t(muted ? 'hud.muted' : 'hud.on');
+  flash.textContent = I18n.t(newMuted ? 'hud.muted' : 'hud.on');
   flash.style.cssText = 'position:fixed;top:12px;left:12px;padding:4px 10px;background:rgba(10,10,15,0.85);color:#6acfff;font:13px sans-serif;border:1px solid #6acfff;border-radius:3px;z-index:9999;pointer-events:none;';
   document.body.appendChild(flash);
   setTimeout(() => flash.remove(), 900);
 });
+
+// Audio-on guarantee — exposed globally so every gameplay scene's create()
+// can call it as a belt-and-braces. Outside YT, force mute=false and
+// attempt to resume the context. Inside YT we leave the platform alone.
+window.__ensureAudioOn__ = () => {
+  if (Playables.inEnv()) return;
+  if (game.sound.mute) game.sound.mute = false;
+  const ctx = game.sound.context;
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+};

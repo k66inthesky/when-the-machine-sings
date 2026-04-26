@@ -122,6 +122,9 @@ export default class StreetScene extends Phaser.Scene {
     this.rangeBarBg = this.add.rectangle(0, 0, 80, 6, 0x1a1a2a).setVisible(false);
     this.rangeBar = this.add.rectangle(0, 0, 80, 5, 0x6acfff).setOrigin(0, 0.5).setVisible(false);
 
+    // Defensive audio-on (mirrors ApartmentScene) so the chase isn't silent.
+    if (typeof window.__ensureAudioOn__ === 'function') window.__ensureAudioOn__();
+
     // Audio continues from apartment — swap to tension BGM if available, else main.
     this.audio = new AudioDistance(this);
     const bgmKey = this.cache.audio.exists('bgm-tension')

@@ -1,5 +1,7 @@
 # When the Machine Sings
 
+![Cover — When the Machine Sings](docs/cover.png)
+
 > *In Taiwan, when the machine sings, you run.*
 
 A short narrative arcade game about the Taiwanese garbage truck — the machine that summons an entire neighborhood every evening with a Beethoven melody. A 6-day solo build for [Gamedev.js Jam 2026](https://itch.io/jam/gamedevjs-2026) (Theme: **Machines**).

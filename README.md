@@ -4,7 +4,7 @@
 
 > *In Taiwan, when the machine sings, you run.*
 
-A short narrative arcade game about the Taiwanese garbage truck — the machine that summons an entire neighborhood every evening with a Beethoven melody. A 6-day solo build for [Gamedev.js Jam 2026](https://itch.io/jam/gamedevjs-2026) (Theme: **Machines**).
+A short narrative arcade game about the Taiwanese garbage truck — the machine that summons an entire neighborhood every evening with a Beethoven melody. A 6-day solo build for [Gamedev.js Jam 2026]([https://itch.io/jam/gamedevjs-2026](https://itch.io/jam/gamedevjs-2026/rate/4510648)) (Theme: **Machines**).
 
 ![Theme: Machines](https://img.shields.io/badge/theme-machines-e8b96a) ![Phaser 3.90](https://img.shields.io/badge/phaser-3.90-6acfff) ![MIT](https://img.shields.io/badge/license-MIT-green)
 
